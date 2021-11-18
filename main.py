@@ -1,16 +1,12 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print((9/2)*8)
-
+from Board import Board
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    board = Board()
+    board.fillBoard()
+    board.printBoard()
+    print(board.isRowValid(0))
+    print(board.isColValid(0))
+
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
