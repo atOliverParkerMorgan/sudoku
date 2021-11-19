@@ -5,12 +5,11 @@ if __name__ == '__main__':
     board = Board()
     board.fillBoard()
     board.fillSquareRandom(0)
-    board.fillSquareRandom(4)
     board.fillSquareRandom(8)
+    # board.fillSquareRandom(4)
+    # board.fillSquareRandom(8)
     board.printBoard()
 
-    print(board.isRowValid(0))
-    print(board.isColValid(0))
 
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

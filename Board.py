@@ -37,70 +37,39 @@ class Board:
 
         return output
 
-    def isSquareValid(self, index):
-        numbersInSquare = self.VALUES_NEEDED_IN_SQUARE
-        for node in self.getBoardSquare(index):
-            if node.value in numbersInSquare:
-                numbersInSquare.remove(node.value)
-            else:
-                return False
-
-        return True
-
     def updateSquare(self, index, value):
         for node in self.getBoardSquare(index):
-            if value in node.validValues:
-                node.validValues.remove(value)
+            if value in self.getBoardNode(node.x, node.y).validValues:
+                self.getBoardNode(node.x, node.y).validValues.remove(value)
 
     def fillBoard(self):
-        for x in range(self.width):
+        squareIndex = 0
+        for y in range(self.height):
             helperList = []
-            for y in range(self.height):
-                squareIndex = 0
-                maxX = 2
-                maxY = 2
-                while x > maxX and y > maxY:
-                    squareIndex += 1
-                    if maxY == self.height - 1:
-                        maxY = 2
-                        maxX += 3
-                    else:
-                        maxY += 3
-
+            for x in range(self.width):
                 helperList.append(Node(x, y, 0, self.VALUES_NEEDED_IN_SQUARE.copy(), squareIndex))
             self.board.append(helperList)
-
-    def isRowValid(self, y):
-        for x in range(self.width):
-            if len(self.getBoardNode(x, y).validValues) > 0:
-                return False
-
-        return True
+        for i in range(len(self.VALUES_NEEDED_IN_SQUARE)):
+            for node in self.getBoardSquare(i):
+                node.squareIndex = i
 
     def updateRow(self, y, value):
         for x in range(self.width):
             if value in self.getBoardNode(x, y).validValues:
                 self.getBoardNode(x, y).validValues.remove(value)
 
-    def isColValid(self, x):
-        for y in range(self.height):
-            if len(self.getBoardNode(x, y).validValues) > 0:
-                return False
-
-        return True
-
     def updateCol(self, x, value):
         for y in range(self.height):
-            print(value)
-            print(self.getBoardNode(x, y).validValues)
-
-            self.getBoardNode(x, y).validValues.remove(value)
-
+            if value in self.getBoardNode(x, y).validValues:
+                self.getBoardNode(x, y).validValues.remove(value)
 
     def updateBoard(self, node, value):
         self.updateCol(node.x, value)
         self.updateRow(node.y, value)
         self.updateSquare(node.squareIndex, value)
+
+    def isValid(self, node, value):
+        return value in node.validValues
 
     def printBoard(self):
 
@@ -115,14 +84,20 @@ class Board:
         return self.board[y][x]
 
     def setBoardNodeValue(self, node, value):
-        if self.board[node.y][node.x].value == 0:
-            self.updateBoard(node, value)
+        if not self.isValid(node, value):
+            return False
 
+        self.updateBoard(node, value)
         self.board[node.y][node.x].value = value
+
+        return True
 
     def fillSquareRandom(self, index):
         for node in self.getBoardSquare(index):
-
             randomValue = node.validValues[random.randint(0, len(node.validValues) - 1)]
-            print(f"X: {node.x}, Y: {node.y}, value: {randomValue} ")
+
+            print(f"X: {node.x}, Y: {node.y}, value: {randomValue}, squareIndex: {node.squareIndex} ")
+
             self.setBoardNodeValue(node, randomValue)
+            print(f"valid nodes: {node.validValues}")
+            print("--")
