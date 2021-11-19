@@ -26,22 +26,6 @@ class Board:
 
         self.NEIGHBOURS = [[1, 1], [0, 1], [-1, -1], [0, -1], [-1, 1], [1, 0], [1, -1], [-1, 0]]
 
-    def getBoardSquare(self, index):
-        cords = self.SQUARES[index]
-        centreNode = self.getBoardNode(cords[0], cords[1])
-        output = [centreNode]
-
-        for cords in self.NEIGHBOURS:
-            x, y = cords[0] + output[0].x, cords[1] + output[0].y
-            output.append(self.getBoardNode(x, y))
-
-        return output
-
-    def updateSquare(self, index, value):
-        for node in self.getBoardSquare(index):
-            if value in self.getBoardNode(node.x, node.y).validValues:
-                self.getBoardNode(node.x, node.y).validValues.remove(value)
-
     def fillBoard(self):
         squareIndex = 0
         for y in range(self.height):
@@ -63,13 +47,26 @@ class Board:
             if value in self.getBoardNode(x, y).validValues:
                 self.getBoardNode(x, y).validValues.remove(value)
 
+    def updateSquare(self, index, value):
+        for node in self.getBoardSquare(index):
+            if value in self.getBoardNode(node.x, node.y).validValues:
+                self.getBoardNode(node.x, node.y).validValues.remove(value)
+
     def updateBoard(self, node, value):
         self.updateCol(node.x, value)
         self.updateRow(node.y, value)
         self.updateSquare(node.squareIndex, value)
 
-    def isValid(self, node, value):
-        return value in node.validValues
+    def getBoardSquare(self, index):
+        cords = self.SQUARES[index]
+        centreNode = self.getBoardNode(cords[0], cords[1])
+        output = [centreNode]
+
+        for cords in self.NEIGHBOURS:
+            x, y = cords[0] + output[0].x, cords[1] + output[0].y
+            output.append(self.getBoardNode(x, y))
+
+        return output
 
     def printBoard(self):
 
@@ -84,7 +81,8 @@ class Board:
         return self.board[y][x]
 
     def setBoardNodeValue(self, node, value):
-        if not self.isValid(node, value):
+        # it is not valid
+        if value not in node.validValues:
             return False
 
         self.updateBoard(node, value)
@@ -94,10 +92,15 @@ class Board:
 
     def fillSquareRandom(self, index):
         for node in self.getBoardSquare(index):
+            if len(node.validValues) == 0:
+                # self.resetSquare(index)
+                print(f"Failed to generate valid values for square with index: {index}")
+                return
             randomValue = node.validValues[random.randint(0, len(node.validValues) - 1)]
 
-            print(f"X: {node.x}, Y: {node.y}, value: {randomValue}, squareIndex: {node.squareIndex} ")
-
+            # print(f"X: {node.x}, Y: {node.y}, value: {randomValue}, squareIndex: {node.squareIndex} ")
             self.setBoardNodeValue(node, randomValue)
-            print(f"valid nodes: {node.validValues}")
-            print("--")
+
+    def resetSquare(self, index):
+        for node in self.getBoardSquare(index):
+            node.value = 0
