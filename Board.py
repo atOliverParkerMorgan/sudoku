@@ -61,6 +61,14 @@ class Board:
 
         return nodesWithoutValue
 
+    def getAllSolutions(self):
+        nodes = self.getNodesWithoutValue()
+        removedNodes = [nodes.pop(0)]
+        while len(nodes) > 0:
+            removedNodes[0].value += 1
+
+            removedNodes.append(nodes.pop(0))
+
     def backTrackingRecursion(self, nodes, index=0):
 
         if index == len(nodes):
@@ -80,44 +88,73 @@ class Board:
 
         return False
 
-    def backTrackingWithoutRecursion(self):
+    def backTrackingWithoutRecursion(self, limit=1):
+        numberOfSolutions = 0
         nodes = self.getNodesWithoutValue()
-        queue = [0]
-        startSearch = {}
-        for i in range(self.width * self.height):
+        startSearch = {0: 1}
+        indexOfStart = 0
+        index = 0
+
+        for i in range(self.width * self.height + 1):
             startSearch[i] = 1
 
-        while len(queue) > 0:
-            print(queue)
-            index = queue.pop(0)
+        # while numberOfSolutions < limit:
+        #
+        #     if indexOfStart == self.width * self.height:
+        #         return numberOfSolutions
+        #
+        #     index = 0
+        #     print("startSearch: ", startSearch[indexOfStart])
+        #     num = startSearch[indexOfStart]
+        #     if num == 10:
+        #         print("here")
+        #         num = 1
+        #         indexOfStart += 1
+        #     print("Num: ", num)
+        #     startSearch[indexOfStart] = num
+        #
+        #     for i in range(indexOfStart + 1, self.width * self.height + 1):
+        #         startSearch[i] = 1
+        #
+        #     i = 0
+        #     for node in nodes:
+        #         if i > indexOfStart:
+        #             self.getBoardNode(node.x, node.y).value = 0
+        #         i += 1
+
+        while index >= 0:
+
             if index == len(nodes):
-                return True
+                numberOfSolutions += 1
+                print()
+                self.printBoard()
+                print()
+                index -= 1
+                nodes[index].value += 1
+                if numberOfSolutions == limit:
+                    return numberOfSolutions
 
             x, y = nodes[index].x, nodes[index].y
 
             found = False
+
             for num in range(startSearch[index], 10):
 
-                if self.isNodeValid(self.getBoardNode(x, y), num):
-
-                    found = True
-
-                    if num + 1 == 10:
-                        num = 0
+                if self.isNodeValid(nodes[index], num):
+                    self.getBoardNode(x, y).value = num
 
                     startSearch[index] = num + 1
-
-                    self.getBoardNode(x, y).value = num
-                    queue.insert(0, index + 1)
+                    found = True
+                    index += 1
                     break
 
             if not found:
                 self.getBoardNode(x, y).value = 0
-                queue.insert(0, index - 1)
-
-        return False
+                startSearch[index] = 1
+                index -= 1
+        return numberOfSolutions
 
     def backTracking(self, limit=1):
         self.numberOfSolutions = 0
-        return self.backTrackingWithoutRecursion()
+        return self.backTrackingWithoutRecursion(limit)
         return self.backTrackingRecursion(self.getNodesWithoutValue())
