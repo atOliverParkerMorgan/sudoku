@@ -92,35 +92,10 @@ class Board:
         numberOfSolutions = 0
         nodes = self.getNodesWithoutValue()
         startSearch = {0: 1}
-        indexOfStart = 0
         index = 0
 
         for i in range(self.width * self.height + 1):
             startSearch[i] = 1
-
-        # while numberOfSolutions < limit:
-        #
-        #     if indexOfStart == self.width * self.height:
-        #         return numberOfSolutions
-        #
-        #     index = 0
-        #     print("startSearch: ", startSearch[indexOfStart])
-        #     num = startSearch[indexOfStart]
-        #     if num == 10:
-        #         print("here")
-        #         num = 1
-        #         indexOfStart += 1
-        #     print("Num: ", num)
-        #     startSearch[indexOfStart] = num
-        #
-        #     for i in range(indexOfStart + 1, self.width * self.height + 1):
-        #         startSearch[i] = 1
-        #
-        #     i = 0
-        #     for node in nodes:
-        #         if i > indexOfStart:
-        #             self.getBoardNode(node.x, node.y).value = 0
-        #         i += 1
 
         while index >= 0:
 
