@@ -18,6 +18,10 @@ class Board:
                 helperList.append(Node(x, y, 0))
             self.board.append(helperList)
 
+    def resetNodesOnBoard(self, nodes):
+        for node in nodes:
+            self.setValue(node.x, node.y, 0)
+
     def isNodeValid(self, node, value):
         for x in range(self.width):
             if self.getBoardNode(x, node.y).value == value:
@@ -87,11 +91,13 @@ class Board:
 
         return False
 
-    def backTrackingWithoutRecursion(self, limit=1):
+    def backTrackingWithoutRecursion(self, limit=1, saveSolution=True):
         numberOfSolutions = 0
         nodes = self.getNodesWithoutValue()
         startSearch = {0: 1}
         index = 0
+
+        nodesCopy = nodes.copy()
 
         for i in range(self.width * self.height + 1):
             startSearch[i] = 1
@@ -106,6 +112,10 @@ class Board:
                 index -= 1
                 nodes[index].value += 1
                 if numberOfSolutions == limit:
+
+                    if not saveSolution:
+                        self.resetNodesOnBoard(nodesCopy)
+
                     return numberOfSolutions
 
             x, y = nodes[index].x, nodes[index].y
@@ -126,6 +136,10 @@ class Board:
                 self.getBoardNode(x, y).value = 0
                 startSearch[index] = 1
                 index -= 1
+
+        if not saveSolution:
+            self.resetNodesOnBoard(nodesCopy)
+
         return numberOfSolutions
 
     def backTracking(self, limit=1):
@@ -150,7 +164,10 @@ class Board:
 
             self.tryToSetValueOfNode(x, y, random.randint(1, 9))
 
-            if self.backTrackingWithoutRecursion(1) == 0:
+            if self.backTrackingWithoutRecursion(1, False) == 0:
                 self.setValue(x, y, 0)
+            else:
+                nodes.pop(randomIndex)
+            print(len(nodes))
 
         # random board has been generated
