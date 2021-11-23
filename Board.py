@@ -49,6 +49,9 @@ class Board:
     def getBoardNode(self, x, y):
         return self.board[y][x]
 
+    def setValue(self, x, y, value):
+        self.getBoardNode(x, y).value = value
+
     def randomSolution(self, index):
         pass
 
@@ -60,14 +63,6 @@ class Board:
                     nodesWithoutValue.append(self.getBoardNode(x, y))
 
         return nodesWithoutValue
-
-    def getAllSolutions(self):
-        nodes = self.getNodesWithoutValue()
-        removedNodes = [nodes.pop(0)]
-        while len(nodes) > 0:
-            removedNodes[0].value += 1
-
-            removedNodes.append(nodes.pop(0))
 
     def backTrackingRecursion(self, nodes, index=0):
 
