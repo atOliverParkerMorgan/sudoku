@@ -129,7 +129,6 @@ class Graphics:
                     self.selectedX, self.selectedY = indexX, indexY
                     self.isValid = True
 
-
                 elif event.type == pygame.MOUSEBUTTONUP:
                     pass
 
