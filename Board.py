@@ -37,6 +37,10 @@ class Board:
 
         return True
 
+    def tryToSetValueOfNode(self, x, y, value):
+        if self.isNodeValid(self.getBoardNode(x, y), 1):
+            self.setValue(x, y, value)
+
     def printBoard(self):
 
         for row in self.board:
@@ -127,4 +131,26 @@ class Board:
     def backTracking(self, limit=1):
         self.numberOfSolutions = 0
         return self.backTrackingWithoutRecursion(limit)
-        return self.backTrackingRecursion(self.getNodesWithoutValue())
+        # return self.backTrackingRecursion(self.getNodesWithoutValue())
+
+    def generatePuzzle(self):
+        # generate random first row
+        # validNumber = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        # x = 0
+        #
+        # while validNumber:
+        #     randomIndex = random.randint(0, len(validNumber)-1)
+        #     self.setValue(x, 0, validNumber.pop(randomIndex))
+        #     x += 1
+
+        nodes = self.getNodesWithoutValue()
+        while nodes:
+            randomIndex = random.randint(0, len(nodes) - 1)
+            x, y = nodes[randomIndex].x, nodes[randomIndex].y
+
+            self.tryToSetValueOfNode(x, y, random.randint(1, 9))
+
+            if self.backTrackingWithoutRecursion(1) == 0:
+                self.setValue(x, y, 0)
+
+        # random board has been generated

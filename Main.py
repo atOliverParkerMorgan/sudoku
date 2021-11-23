@@ -6,6 +6,6 @@ if __name__ == '__main__':
     board.fillBoard()
 
     # print(board.backTracking(2))
-
+    board.generatePuzzle()
     g = Graphics(board)
     g.evenHandler()
