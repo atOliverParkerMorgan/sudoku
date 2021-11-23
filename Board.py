@@ -11,7 +11,6 @@ class Board:
         self.numberOfSolutions = 0
 
     def fillBoard(self):
-        squareIndex = 0
         for y in range(self.height):
             helperList = []
             for x in range(self.width):
@@ -103,20 +102,21 @@ class Board:
             startSearch[i] = 1
 
         while index >= 0:
-
             if index == len(nodes):
                 numberOfSolutions += 1
-                print()
-                self.printBoard()
-                print()
-                index -= 1
-                nodes[index].value += 1
+
                 if numberOfSolutions == limit:
 
                     if not saveSolution:
                         self.resetNodesOnBoard(nodesCopy)
 
                     return numberOfSolutions
+
+                print()
+                self.printBoard()
+                print()
+                index -= 1
+                nodes[index].value += 1
 
             x, y = nodes[index].x, nodes[index].y
 
@@ -148,26 +148,43 @@ class Board:
         # return self.backTrackingRecursion(self.getNodesWithoutValue())
 
     def generatePuzzle(self):
-        # generate random first row
-        # validNumber = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        # x = 0
-        #
-        # while validNumber:
-        #     randomIndex = random.randint(0, len(validNumber)-1)
-        #     self.setValue(x, 0, validNumber.pop(randomIndex))
-        #     x += 1
 
         nodes = self.getNodesWithoutValue()
         while nodes:
             randomIndex = random.randint(0, len(nodes) - 1)
             x, y = nodes[randomIndex].x, nodes[randomIndex].y
 
-            self.tryToSetValueOfNode(x, y, random.randint(1, 9))
+            validNumList = [num for num in range(1, 10) if self.isNodeValid(nodes[randomIndex], num)]
+
+            self.setValue(x, y, validNumList[random.randint(0, len(validNumList) - 1)])
 
             if self.backTrackingWithoutRecursion(1, False) == 0:
+                print("back")
+                self.printBoard()
                 self.setValue(x, y, 0)
             else:
                 nodes.pop(randomIndex)
+
             print(len(nodes))
 
         # random board has been generated
+
+        allNodesList = []
+        for x in range(self.width):
+            for y in range(self.height):
+                allNodesList.append((x, y))
+
+        randomNodeList = []
+
+        while allNodesList:
+            randomNodeList.append(allNodesList.pop(random.randint(0, len(allNodesList) - 1)))
+
+        while randomNodeList:
+            x, y = randomNodeList.pop(0)
+
+            value = self.getBoardNode(x, y).value
+            self.setValue(x, y, 0)
+            if self.backTrackingWithoutRecursion(2, False) == 2:
+                self.setValue(x, y, value)
+
+
