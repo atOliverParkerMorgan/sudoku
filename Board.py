@@ -25,6 +25,7 @@ class Board:
         # reset all node value to zero
         for node in nodes:
             self.setValue(node.x, node.y, 0)
+            self.getBoardNode(node.x, node.y).userCannotChange = False
 
     def isNodeValid(self, node, value):
         # check horizontally for the same value
@@ -250,3 +251,6 @@ class Board:
             # if the puzzle has two solution => set the node to its original value
             if self.backTrackingWithoutRecursion(2, False) == 2:
                 self.setValue(x, y, value)
+
+                # user cannot change this node its apart of the puzzle
+                self.getBoardNode(x, y).userCannotChange = True

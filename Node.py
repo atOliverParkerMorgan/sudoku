@@ -3,6 +3,7 @@ class Node:
         self.x = x
         self.y = y
         self.value = value
+        self.userCannotChange = False
 
     def __str__(self):
         return f"|{self.value}|"

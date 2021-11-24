@@ -6,12 +6,15 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (34, 139, 34)
 RED = (255, 69, 0)
+GREY = (47, 79, 79)
 
 
 class Graphics:
     def __init__(self, board):
 
         self.board = board
+
+        # pixel width of line
         self.BOLD_LINE = 3
 
         self.SQUARE_SIDE_SIZE = 50
@@ -24,11 +27,14 @@ class Graphics:
         self.CLOCK.tick(20)
         self.SCREEN.fill(WHITE)
 
+        # selected node cords
         self.selectedX = None
         self.selectedY = None
 
+        # is selected node valid
         self.isValid = True
 
+        # graphical representation of board
         self.numberText = []
         for _ in range(self.board.width):
             line = []
@@ -41,11 +47,13 @@ class Graphics:
         fullScreen = pygame.Rect(0, 0, self.BOARD_WIDTH, self.BOARD_HEIGHT)
         self.SCREEN.fill(WHITE, fullScreen)
 
+        # show lines around on board
         for x in range(0, self.BOARD_WIDTH, self.SQUARE_SIDE_SIZE):
             n = 1
             if x % 3 == 0:
                 n = self.BOLD_LINE
             pygame.draw.line(self.SCREEN, BLACK, (x, 0), (x, self.BOARD_HEIGHT), n)
+
         for y in range(0, self.BOARD_HEIGHT, self.SQUARE_SIDE_SIZE):
             n = 1
             if y % 3 == 0:
@@ -53,6 +61,8 @@ class Graphics:
             pygame.draw.line(self.SCREEN, BLACK, (0, y), (self.BOARD_WIDTH, y), n)
 
     def showNumbersOnBoard(self):
+
+        # draw symbols on board
         for x, graphicsX in zip(range(self.board.width),
                                 range(int(self.SQUARE_SIDE_SIZE / 2) - 5, self.BOARD_WIDTH, self.SQUARE_SIDE_SIZE)):
             for y, graphicsY in zip(range(self.board.height),
@@ -63,10 +73,18 @@ class Graphics:
                 if symbol == "0":
                     symbol = ""
 
-                text = self.numberText[y][x].render(symbol, False, BLACK)
+                color = GREY
+                if self.board.board[y][x].userCannotChange:
+                    color = BLACK
+
+                text = self.numberText[y][x].render(symbol, False, color)
                 self.SCREEN.blit(text, (graphicsX, graphicsY))
 
     def showSelected(self, x, y):
+
+        # show selected
+
+        # account for lines that separate nodes
         boarderFrontX, boarderFrontY, boarderBackX, boarderBackY = 1, 1, 1, 1
         if x % 3 == 0:
             boarderFrontX = 2
@@ -82,17 +100,21 @@ class Graphics:
         if (y + 1) % 3 == 0:
             boarderBackY = 2
 
+        # create the square using rect
         selectedSquare = pygame.Rect(x * self.SQUARE_SIDE_SIZE + boarderFrontX,
                                      y * self.SQUARE_SIDE_SIZE + boarderFrontY,
                                      self.SQUARE_SIDE_SIZE - boarderBackX,
                                      self.SQUARE_SIDE_SIZE - boarderBackY)
 
-        if self.isValid:
+        # change color depending if current user input is valid or not
+        if self.isValid and not self.board.board[y][x].userCannotChange:
             self.SCREEN.fill(GREEN, selectedSquare)
         else:
             self.SCREEN.fill(RED, selectedSquare)
 
     def evenHandler(self):
+        # handle events
+
         while True:
 
             self.showBoard()
@@ -116,7 +138,8 @@ class Graphics:
 
                     if event.unicode in validInput and isSelected:
 
-                        if self.board.isNodeValid(self.board.board[self.selectedY][self.selectedX], int(event.unicode)):
+                        if self.board.isNodeValid(self.board.board[self.selectedY][self.selectedX], int(event.unicode))\
+                                and not self.board.getBoardNode(self.selectedX, self.selectedY).userCannotChange:
                             self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
                             self.isValid = True
                         else:
