@@ -197,7 +197,7 @@ class Board:
         return self.backTrackingWithoutRecursion(limit)
         # return self.backTrackingRecursion(self.getNodesWithoutValue())
 
-    def generatePuzzle(self):
+    def generatePuzzle(self, graphics):
 
         nodes = self.getNodesWithoutValue()
 

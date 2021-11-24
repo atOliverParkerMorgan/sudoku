@@ -1,4 +1,8 @@
 import pygame
+import pygame_menu
+from pygame_menu.examples import create_example_window
+from threading import Thread
+
 
 pygame.init()
 FONT = pygame.font.Font(None, 32)
@@ -41,6 +45,9 @@ class Graphics:
             for _ in range(self.board.height):
                 line.append(FONT)
             self.numberText.append(line)
+
+        self.menu = None
+        self.loadingBar = 0
 
     def showBoard(self):
 
@@ -138,12 +145,17 @@ class Graphics:
 
                     if event.unicode in validInput and isSelected:
 
-                        if self.board.isNodeValid(self.board.board[self.selectedY][self.selectedX], int(event.unicode))\
-                                and not self.board.getBoardNode(self.selectedX, self.selectedY).userCannotChange:
-                            self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
-                            self.isValid = True
-                        else:
-                            self.isValid = False
+                        if not event.unicode == '' :
+
+                            if self.board.isNodeValid(self.board.board[self.selectedY][self.selectedX], int(event.unicode)) \
+                                    and not self.board.getBoardNode(self.selectedX, self.selectedY).userCannotChange:
+                                self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
+                                self.isValid = True
+                            else:
+                                self.isValid = False
+
+                    if event.type == pygame.K_ESCAPE:
+                        self.createMenu()
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     indexX = int(mouseX / self.SQUARE_SIDE_SIZE)
@@ -156,3 +168,32 @@ class Graphics:
                     pass
 
             pygame.display.update()
+
+    def loading(self):
+        rect = pygame.Rect(10, self.BOARD_WIDTH - 100, self.BOARD_WIDTH - 100, self.SQUARE_SIDE_SIZE)
+        self.SCREEN.fill(GREEN, rect)
+        pygame.display.update()
+
+    def createMenu(self):
+
+        def newGame():
+            self.evenHandler()
+
+        # create menu
+        surface = create_example_window('SuDoku', (self.BOARD_WIDTH, self.BOARD_HEIGHT))
+
+        self.menu = pygame_menu.Menu('SuDoku', self.BOARD_WIDTH, self.BOARD_HEIGHT,
+                                     theme=pygame_menu.themes.THEME_DARK)
+
+        button = self.menu.add.button('NEW GAME', newGame)
+        self.menu.add.button('QUIT', pygame_menu.events.EXIT)
+        self.menu.add.label('\n')
+
+        self.menu.add.label(str(self.loadingBar))
+
+        self.menu.add.label(' Oliver Morgan ')
+        self.menu.add.label("")
+
+        self.menu.mainloop(surface)
+
+        # self.menu.force_surface_update()
