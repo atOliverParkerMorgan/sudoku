@@ -145,7 +145,7 @@ class Graphics:
 
                     if event.unicode in validInput and isSelected:
 
-                        if not event.unicode == '' :
+                        if not event.unicode == '':
 
                             if self.board.isNodeValid(self.board.board[self.selectedY][self.selectedX], int(event.unicode)) \
                                     and not self.board.getBoardNode(self.selectedX, self.selectedY).userCannotChange:
@@ -185,7 +185,7 @@ class Graphics:
         self.menu = pygame_menu.Menu('SuDoku', self.BOARD_WIDTH, self.BOARD_HEIGHT,
                                      theme=pygame_menu.themes.THEME_DARK)
 
-        button = self.menu.add.button('NEW GAME', newGame)
+        self.menu.add.button('NEW GAME', newGame)
         self.menu.add.button('QUIT', pygame_menu.events.EXIT)
         self.menu.add.label('\n')
 

@@ -13,6 +13,8 @@ class Board:
         self.board: List[List[Node]] = []
 
     def fillBoard(self):
+        # reset board
+        self.board: List[List[Node]] = []
 
         # create new board with nodes that have value zero
         for y in range(self.height):
@@ -113,12 +115,14 @@ class Board:
         # no valid value for this board combination
         return False
 
-    def backTrackingWithoutRecursion(self, limit=1, saveSolution=True):
+    def backTrackingWithoutRecursion(self, limit=1, saveSolution=True, maxNumberOfLoops=-1):
         """
         :param limit: a limit of solution to search for
         :param saveSolution: if True save the last solution to the self.board
-        :return: number of solution found
+        :param maxNumberOfLoops: number of loops the algorithm is allowed to go through. -1 if infinite
+        :return: number of solution found; -1 if the algorithm exceeds the maxNumberOfLoops
         """
+        numberOfLoops = 0
 
         numberOfSolutions = 0
         nodes = self.getNodesWithoutValue()
@@ -139,6 +143,11 @@ class Board:
 
         while index >= 0:
 
+            if maxNumberOfLoops != -1:
+                numberOfLoops += 1
+                if numberOfLoops >= maxNumberOfLoops:
+                    return -1
+
             # the algorithm has found a solution, because index is past the last node
             if index == len(nodes):
                 numberOfSolutions += 1
@@ -151,9 +160,10 @@ class Board:
 
                     return numberOfSolutions
 
-                print()
-                self.printBoard()
-                print()
+                # print the current state of the board
+                # print()
+                # self.printBoard()
+                # print()
 
                 # limit has not yet been reached
                 # move to last node
@@ -197,8 +207,7 @@ class Board:
         return self.backTrackingWithoutRecursion(limit)
         # return self.backTrackingRecursion(self.getNodesWithoutValue())
 
-    def generatePuzzle(self, graphics):
-
+    def generatePuzzle(self):
         nodes = self.getNodesWithoutValue()
 
         while nodes:
@@ -214,15 +223,23 @@ class Board:
             self.setValue(x, y, validNumList[random.randint(0, len(validNumList) - 1)])
 
             # if the board doesn't have a solution, because of the new value => reset
-            if self.backTrackingWithoutRecursion(1, False) == 0:
-                print("back")
-                self.printBoard()
+            numberOfSolutions = self.backTrackingWithoutRecursion(1, False, 1000000)
+
+            # returns -1 if the algorithm searches through 10 000 000 loops without result
+            # this puzzle is too costly to generate
+            if numberOfSolutions == -1:
+                print("\n\n\n ATTENTION: Search has been restarted current search is too costly \n\n\n")
+                return
+
+            # return 0 if the puzzle has no solution
+            if numberOfSolutions == 0:
                 self.setValue(x, y, 0)
+
             else:
                 # the node has been successfully generated
                 nodes.pop(randomIndex)
 
-            print(len(nodes))
+            print(f"Loading: {81 - len(nodes)} %")
 
         # a valid random board has been generated
 
@@ -242,13 +259,14 @@ class Board:
         while randomNodeList:
             x, y = randomNodeList.pop(0)
 
-            # save node value in case the uniqueness of the puzzle breaks down once this node is removed
+            # save node valuxe in case the uniqueness of the puzzle breaks down once this node is removed
             value = self.getBoardNode(x, y).value
 
             # remove node value
             self.setValue(x, y, 0)
 
             # if the puzzle has two solution => set the node to its original value
+            print(f"Loading: {81 + len(randomNodeList)} %")
             if self.backTrackingWithoutRecursion(2, False) == 2:
                 self.setValue(x, y, value)
 

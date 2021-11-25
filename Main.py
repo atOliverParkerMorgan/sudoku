@@ -1,3 +1,5 @@
+import csv
+
 from Board import Board
 from Graphics import Graphics
 
@@ -5,9 +7,16 @@ if __name__ == '__main__':
     board = Board()
     board.fillBoard()
 
-    # print(board.backTracking(2))
+    with open('preGeneratedSudokuBoards.csv', 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
 
+        for _ in range(10):
+            board.fillBoard()
+            board.generatePuzzle()
 
-    # board.generatePuzzle()
-    g = Graphics(board)
-    g.createMenu()
+            output = []
+            for line in board.board:
+                for node in line:
+                    output.append(node.value)
+
+            writer.writerow(output)
