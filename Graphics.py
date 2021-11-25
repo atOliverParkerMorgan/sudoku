@@ -1,7 +1,8 @@
+from threading import Thread
+
 import pygame
 import pygame_menu
 from pygame_menu.examples import create_example_window
-
 
 pygame.init()
 FONT = pygame.font.Font(None, 32)
@@ -46,7 +47,6 @@ class Graphics:
             self.numberText.append(line)
 
         self.menu = None
-        self.loadingBar = 0
 
     def showBoard(self):
 
@@ -142,19 +142,25 @@ class Graphics:
 
                     validInput = "123456789"
 
-                    if event.unicode in validInput and isSelected:
+                    if event.key == pygame.K_ESCAPE:
+                        self.createMenu()
+                        pygame.quit()
+                        break
+
+                    elif event.unicode in validInput and isSelected:
 
                         if not event.unicode == '':
 
-                            if self.board.isNodeValid(self.board.board[self.selectedY][self.selectedX], int(event.unicode)) \
+                            if self.board.isNodeValid(self.board.board[self.selectedY][self.selectedX],
+                                                      int(event.unicode)) \
                                     and not self.board.getBoardNode(self.selectedX, self.selectedY).userCannotChange:
                                 self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
                                 self.isValid = True
                             else:
                                 self.isValid = False
 
-                    if event.type == pygame.K_ESCAPE:
-                        self.createMenu()
+                    elif event.unicode == "S" or "s":
+                        self.board.backTrackingWithoutRecursion()
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     indexX = int(mouseX / self.SQUARE_SIDE_SIZE)
@@ -176,6 +182,7 @@ class Graphics:
     def createMenu(self):
 
         def newGame():
+            self.board.setToRandomPreGeneratedBoard()
             self.evenHandler()
 
         # create menu
@@ -186,13 +193,11 @@ class Graphics:
 
         self.menu.add.button('NEW GAME', newGame)
         self.menu.add.button('QUIT', pygame_menu.events.EXIT)
-        self.menu.add.label('\n')
+        self.menu.add.label('')
 
-        self.menu.add.label(str(self.loadingBar))
-
+        self.menu.add.label('PRESS "S" TO SOLVE')
+        self.menu.add.label("")
         self.menu.add.label(' Oliver Morgan ')
         self.menu.add.label("")
 
         self.menu.mainloop(surface)
-
-        # self.menu.force_surface_update()

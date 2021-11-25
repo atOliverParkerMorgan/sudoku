@@ -1,3 +1,4 @@
+import csv
 import random
 from typing import List
 from Node import Node
@@ -29,15 +30,24 @@ class Board:
             self.setValue(node.x, node.y, 0)
             self.getBoardNode(node.x, node.y).userCannotChange = False
 
+    def setBoardWithValues(self, values):
+        # set all node value to a newly chosen value
+        index = 0
+        for y in range(self.height):
+            for x in range(self.width):
+                self.setValue(x, y, values[index])
+                self.getBoardNode(x, y).userCannotChange = str(values[index]) != "0"
+                index += 1
+
     def isNodeValid(self, node, value):
         # check horizontally for the same value
         for x in range(self.width):
-            if self.getBoardNode(x, node.y).value == value:
+            if str(self.getBoardNode(x, node.y).value) == str(value):
                 return False
 
         # check vertically for the same value
         for y in range(self.height):
-            if self.getBoardNode(node.x, y).value == value:
+            if str(self.getBoardNode(node.x, y).value) == str(value):
                 return False
 
         # check squares
@@ -47,7 +57,7 @@ class Board:
 
         for x in range(3):
             for y in range(3):
-                if self.getBoardNode(x + startRow, y + startCol).value == value:
+                if str(self.getBoardNode(x + startRow, y + startCol).value) == str(value):
                     return False
 
         return True
@@ -80,7 +90,7 @@ class Board:
         nodesWithoutValue = []
         for y in range(self.height):
             for x in range(self.width):
-                if self.getBoardNode(x, y).value == 0:
+                if str(self.getBoardNode(x, y).value) == "0":
                     nodesWithoutValue.append(self.getBoardNode(x, y))
 
         return nodesWithoutValue
@@ -203,10 +213,6 @@ class Board:
 
         return numberOfSolutions
 
-    def backTracking(self, limit=1):
-        return self.backTrackingWithoutRecursion(limit)
-        # return self.backTrackingRecursion(self.getNodesWithoutValue())
-
     def generatePuzzle(self, maxSearchDepth=10000000):
         nodes = self.getNodesWithoutValue()
         lastP = 0
@@ -290,3 +296,9 @@ class Board:
                 self.getBoardNode(x, y).userCannotChange = True
 
         return True
+
+    def setToRandomPreGeneratedBoard(self):
+        with open('preGeneratedSudokuBoards.csv', 'rt') as f2:
+            reader = list(csv.reader(f2, delimiter=','))
+            randomBoardIndex = random.randint(0, sum(1 for _ in reader) - 1)
+            self.setBoardWithValues(reader[randomBoardIndex])

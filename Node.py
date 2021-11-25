@@ -2,7 +2,7 @@ class Node:
     def __init__(self, x, y, value):
         self.x = x
         self.y = y
-        self.value = value
+        self.value: int = value
         self.userCannotChange = False
 
     def __str__(self):
