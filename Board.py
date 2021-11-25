@@ -207,8 +207,9 @@ class Board:
         return self.backTrackingWithoutRecursion(limit)
         # return self.backTrackingRecursion(self.getNodesWithoutValue())
 
-    def generatePuzzle(self):
+    def generatePuzzle(self, maxSearchDepth=10000000):
         nodes = self.getNodesWithoutValue()
+        lastP = 0
 
         while nodes:
 
@@ -223,13 +224,13 @@ class Board:
             self.setValue(x, y, validNumList[random.randint(0, len(validNumList) - 1)])
 
             # if the board doesn't have a solution, because of the new value => reset
-            numberOfSolutions = self.backTrackingWithoutRecursion(1, False, 1000000)
+            numberOfSolutions = self.backTrackingWithoutRecursion(1, False, maxSearchDepth)
 
             # returns -1 if the algorithm searches through 10 000 000 loops without result
             # this puzzle is too costly to generate
             if numberOfSolutions == -1:
-                print("\n\n\n ATTENTION: Search has been restarted current search is too costly \n\n\n")
-                return
+                print("\n\n\n ATTENTION: Search has been restarted, current search is too costly \n\n\n")
+                return False
 
             # return 0 if the puzzle has no solution
             if numberOfSolutions == 0:
@@ -239,7 +240,13 @@ class Board:
                 # the node has been successfully generated
                 nodes.pop(randomIndex)
 
-            print(f"Loading: {81 - len(nodes)} %")
+            # console
+            p = len(nodes)
+
+            p = int(50 - 50 * p / 81)
+            if p != lastP:
+                print(f"Loading: {p} %")
+                lastP = p
 
         # a valid random board has been generated
 
@@ -259,16 +266,27 @@ class Board:
         while randomNodeList:
             x, y = randomNodeList.pop(0)
 
-            # save node valuxe in case the uniqueness of the puzzle breaks down once this node is removed
+            # save node value in case the uniqueness of the puzzle breaks down once this node is removed
             value = self.getBoardNode(x, y).value
 
             # remove node value
             self.setValue(x, y, 0)
 
+            # console output
+            p = len(randomNodeList)
+            if p == 0:
+                p = 1
+
+            p = int(50 + 50 / p)
+            if p != lastP:
+                print(f"Loading: {p} %")
+                lastP = p
+
             # if the puzzle has two solution => set the node to its original value
-            print(f"Loading: {81 + len(randomNodeList)} %")
             if self.backTrackingWithoutRecursion(2, False) == 2:
                 self.setValue(x, y, value)
 
                 # user cannot change this node its apart of the puzzle
                 self.getBoardNode(x, y).userCannotChange = True
+
+        return True
