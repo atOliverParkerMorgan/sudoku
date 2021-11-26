@@ -34,4 +34,4 @@ if __name__ == '__main__':
     g = Graphics(board)
     g.createMenu()
 
-    generateSuDokuBoards(100)
+    generateSuDokuBoards(1000000000000)

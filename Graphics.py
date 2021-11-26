@@ -18,6 +18,20 @@ class Graphics:
 
         self.board = board
 
+        # following variables are used to showing how puzzle is being solved
+        self.isSolving = False
+
+        self.numberOfSolutions = 0
+        self.nodes = None
+        self.savedSolution = None
+        self.startSearch = {}
+        self.index = 0
+        self.nodesCopy = None
+
+        # initialize startSearch
+        for i in range(self.board.width * self.board.height + 1):
+            self.startSearch[i] = 1
+
         # pixel width of line
         self.BOLD_LINE = 3
 
@@ -125,6 +139,19 @@ class Graphics:
 
             self.showBoard()
 
+            if self.isSolving:
+                output = self.board.backTrackingWithoutRecursionCycle(self.nodes, self.nodesCopy, self.index,
+                                                                      self.startSearch,
+                                                                      self.numberOfSolutions)
+
+                if isinstance(output, tuple):
+                    # hasn't found solution => update variables
+                    self.nodes, self.nodesCopy, self.index, self.startSearch, self.numberOfSolutions, _ = output
+
+                else:
+                    # has found solution
+                    self.isSolving = False
+
             isSelected = self.selectedX is not None and self.selectedY is not None
 
             if isSelected:
@@ -147,7 +174,7 @@ class Graphics:
                         pygame.quit()
                         break
 
-                    elif event.unicode in validInput and isSelected:
+                    elif event.unicode in validInput and isSelected and not self.isSolving:
 
                         if not event.unicode == '':
 
@@ -159,8 +186,22 @@ class Graphics:
                             else:
                                 self.isValid = False
 
-                    elif event.unicode == "S" or "s":
-                        self.board.backTrackingWithoutRecursion()
+                    elif event.unicode == "S" or "s" and not self.isSolving:
+
+                        self.nodes = self.board.getNodesWithoutValue()
+
+                        if len(self.nodes) == 0:
+                            self.board.resetNodesOnBoard(self.nodesCopy)
+
+                        else:
+                            self.nodesCopy = self.nodes.copy()
+                            self.isSolving = True
+
+                            self.index = 0
+                            self.numberOfSolutions = 0
+                            self.startSearch = {}
+                            for i in range(self.board.width * self.board.height + 1):
+                                self.startSearch[i] = 1
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     indexX = int(mouseX / self.SQUARE_SIDE_SIZE)
@@ -168,9 +209,6 @@ class Graphics:
 
                     self.selectedX, self.selectedY = indexX, indexY
                     self.isValid = True
-
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    pass
 
             pygame.display.update()
 
@@ -186,7 +224,8 @@ class Graphics:
             self.evenHandler()
 
         # create menu
-        surface = create_example_window('SuDoku', (self.BOARD_WIDTH, self.BOARD_HEIGHT))
+        surface = create_example_window('SuDoku - Hint: PRESS "S" TO SOLVE',
+                                        (self.BOARD_WIDTH, self.BOARD_HEIGHT))
 
         self.menu = pygame_menu.Menu('SuDoku', self.BOARD_WIDTH, self.BOARD_HEIGHT,
                                      theme=pygame_menu.themes.THEME_DARK)
@@ -195,9 +234,6 @@ class Graphics:
         self.menu.add.button('QUIT', pygame_menu.events.EXIT)
         self.menu.add.label('')
 
-        self.menu.add.label('PRESS "S" TO SOLVE')
-        self.menu.add.label("")
-        self.menu.add.label(' Oliver Morgan ')
-        self.menu.add.label("")
+        self.menu.add.label("Oliver Morgan")
 
         self.menu.mainloop(surface)

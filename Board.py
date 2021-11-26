@@ -152,66 +152,98 @@ class Board:
             startSearch[i] = 1
 
         while index >= 0:
+            output = self.backTrackingWithoutRecursionCycle(nodes, nodesCopy, index, startSearch, saveSolution,
+                                                            numberOfSolutions, limit, maxNumberOfLoops, numberOfLoops)
 
-            if maxNumberOfLoops != -1:
-                numberOfLoops += 1
-                if numberOfLoops >= maxNumberOfLoops:
-                    return -1
+            if isinstance(output, tuple):
+                # hasn't found solution => update variables
+                nodes, nodesCopy, index, startSearch, numberOfSolutions,  numberOfLoops = output
 
-            # the algorithm has found a solution, because index is past the last node
-            if index == len(nodes):
-                numberOfSolutions += 1
-
-                if numberOfSolutions == limit:
-
-                    # reset board
-                    if not saveSolution:
-                        self.resetNodesOnBoard(nodesCopy)
-
-                    return numberOfSolutions
-
-                # print the current state of the board
-                # print()
-                # self.printBoard()
-                # print()
-
-                # limit has not yet been reached
-                # move to last node
-                index -= 1
-                # make last node invalid so that the algorithm has to find another combination that is valid
-                nodes[index].value += 1
-
-            x, y = nodes[index].x, nodes[index].y
-
-            # does this node have valid value
-            found = False
-
-            for num in range(startSearch[index], 10):
-
-                if self.isNodeValid(nodes[index], num):
-                    self.getBoardNode(x, y).value = num
-
-                    # set start node begging value for future searches
-                    startSearch[index] = num + 1
-                    found = True
-
-                    # check next node
-                    index += 1
-
-                    break
-
-            if not found:
-                # reset not because it has no valid value
-                self.getBoardNode(x, y).value = 0
-                startSearch[index] = 1
-
-                # move to previous node
-                index -= 1
+            else:
+                # has found solution
+                numberOfSolutions = output
+                break
 
         if not saveSolution:
             self.resetNodesOnBoard(nodesCopy)
 
         return numberOfSolutions
+
+    def backTrackingWithoutRecursionCycle(self, nodes, nodesCopy, index, startSearch, numberOfSolutions, saveSolution=True,
+                                          limit=1, maxNumberOfLoops=10000000, numberOfLoops=0):
+        """
+        This function is need because pygame doesn't support multithreading.
+        So if we want to display the solution we need to solve one cycle per an event update.
+
+        :param nodes: The nodes that are being searched
+        :param nodesCopy: A copy of the begging nodes
+        :param index: An index of the node that is currently being solved
+        :param startSearch: A dictionary of all the values of the nodes that have been solved
+        :param saveSolution: Boolean that determines if the the solution should be saved in self.board
+        :param numberOfSolutions: The number of solutions that the puzzle has
+        :param limit: The limit at witch the algorithm should stops searching for solutions
+        :param maxNumberOfLoops: A maximum number of loops that the algorithm should go through before stopping (-1 is infinitive)
+        :param numberOfLoops: Current number of loops that the algorithm has gone through
+        :return: if a solution has been found => number of solutions to the input suDoku board (the input suDoku board is self.board)
+                 else => all input params
+        """
+
+        if maxNumberOfLoops != -1:
+            numberOfLoops += 1
+            if numberOfLoops >= maxNumberOfLoops:
+                return -1
+
+            # the algorithm has found a solution, because index is past the last node
+        if index == len(nodes):
+            numberOfSolutions += 1
+
+            if numberOfSolutions == limit:
+
+                # reset board
+                if not saveSolution:
+                    self.resetNodesOnBoard(nodesCopy)
+
+                return numberOfSolutions
+
+            # print the current state of the board
+            # print()
+            # self.printBoard()
+            # print()
+
+            # limit has not yet been reached
+            # move to last node
+            index -= 1
+            # make last node invalid so that the algorithm has to find another combination that is valid
+            nodes[index].value += 1
+
+        x, y = nodes[index].x, nodes[index].y
+
+        # does this node have valid value
+        found = False
+
+        for num in range(startSearch[index], 10):
+
+            if self.isNodeValid(nodes[index], num):
+                self.getBoardNode(x, y).value = num
+
+                # set start node begging value for future searches
+                startSearch[index] = num + 1
+                found = True
+
+                # check next node
+                index += 1
+
+                break
+
+        if not found:
+            # reset not because it has no valid value
+            self.getBoardNode(x, y).value = 0
+            startSearch[index] = 1
+
+            # move to previous node
+            index -= 1
+
+        return nodes, nodesCopy, index, startSearch, numberOfSolutions, numberOfLoops
 
     def generatePuzzle(self, maxSearchDepth=10000000):
         nodes = self.getNodesWithoutValue()
