@@ -1,3 +1,4 @@
+import sys
 from threading import Thread
 
 import pygame
@@ -164,7 +165,10 @@ class Graphics:
             # pygame events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    exit()
+                    pygame.quit()
+                    sys.exit()
+                    break
+
                 if event.type == pygame.KEYDOWN:
 
                     validInput = "123456789"
@@ -186,14 +190,16 @@ class Graphics:
                             else:
                                 self.isValid = False
 
-                    elif event.unicode == "S" or "s" and not self.isSolving:
+                    elif event.key == pygame.K_s and not self.isSolving:
 
+                        self.board.resetNodesOnBoardThatUserChanged()
                         self.nodes = self.board.getNodesWithoutValue()
 
                         if len(self.nodes) == 0:
                             self.board.resetNodesOnBoard(self.nodesCopy)
 
                         else:
+
                             self.nodesCopy = self.nodes.copy()
                             self.isSolving = True
 
@@ -218,6 +224,7 @@ class Graphics:
         pygame.display.update()
 
     def createMenu(self):
+        self.isSolving = False
 
         def newGame():
             self.board.setToRandomPreGeneratedBoard()

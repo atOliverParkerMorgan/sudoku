@@ -30,6 +30,14 @@ class Board:
             self.setValue(node.x, node.y, 0)
             self.getBoardNode(node.x, node.y).userCannotChange = False
 
+    def resetNodesOnBoardThatUserChanged(self):
+        # reset all node value to zero that user changed
+        for x in range(self.width):
+            for y in range(self.height):
+                node = self.getBoardNode(x, y)
+                if not node.userCannotChange:
+                    self.setValue(node.x, node.y, 0)
+
     def setBoardWithValues(self, values):
         # set all node value to a newly chosen value
         index = 0
@@ -321,7 +329,7 @@ class Board:
                 lastP = p
 
             # if the puzzle has two solution => set the node to its original value
-            if self.backTrackingWithoutRecursion(2, False) == 2:
+            if self.backTrackingWithoutRecursion(2, False, maxSearchDepth) == 2:
                 self.setValue(x, y, value)
 
                 # user cannot change this node its apart of the puzzle

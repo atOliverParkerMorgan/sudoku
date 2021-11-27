@@ -8,7 +8,7 @@ def generateSuDokuBoards(numberOfBoards):
     with open('preGeneratedSudokuBoards.csv', 'a', newline='', encoding='utf-8') as f:
         with open('preGeneratedSudokuBoards.csv', 'rt') as f2:
 
-            reader = csv.reader(f2, delimiter=',')  # good point by @paco
+            reader = csv.reader(f2, delimiter=',')
             writer = csv.writer(f)
 
             for _ in range(numberOfBoards):
@@ -33,5 +33,3 @@ if __name__ == '__main__':
 
     g = Graphics(board)
     g.createMenu()
-
-    generateSuDokuBoards(1000000000000)
