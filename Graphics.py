@@ -167,7 +167,7 @@ class Graphics:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                    break
+
 
                 if event.type == pygame.KEYDOWN:
 
@@ -192,14 +192,14 @@ class Graphics:
 
                     elif event.key == pygame.K_s and not self.isSolving:
 
-                        self.board.resetNodesOnBoardThatUserChanged()
                         self.nodes = self.board.getNodesWithoutValue()
 
                         if len(self.nodes) == 0:
                             self.board.resetNodesOnBoard(self.nodesCopy)
 
                         else:
-
+                            self.board.resetNodesOnBoardThatUserChanged()
+                            self.nodes = self.board.getNodesWithoutValue()
                             self.nodesCopy = self.nodes.copy()
                             self.isSolving = True
 
