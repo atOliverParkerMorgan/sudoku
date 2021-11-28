@@ -11,7 +11,7 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (34, 139, 34)
 RED = (255, 69, 0)
-GREY = (47, 79, 79)
+BLUE = (0, 0, 255)
 
 
 class Graphics:
@@ -94,8 +94,9 @@ class Graphics:
                 if symbol == "0":
                     symbol = ""
 
-                color = GREY
-                if self.board.board[y][x].userCannotChange:
+                color = BLUE
+
+                if self.board.board[y][x].userCannotChange or len(self.board.getNodesWithoutValue()) == 0:
                     color = BLACK
 
                 text = self.numberText[y][x].render(symbol, False, color)
@@ -168,12 +169,15 @@ class Graphics:
                     pygame.quit()
                     sys.exit()
 
-
                 if event.type == pygame.KEYDOWN:
 
                     validInput = "123456789"
 
-                    if event.key == pygame.K_ESCAPE:
+                    if event.key == pygame.K_BACKSPACE and not self.board.getBoardNode(self.selectedX,
+                                                                                       self.selectedY).userCannotChange:
+                        self.board.setValue(self.selectedX, self.selectedY, 0)
+
+                    elif event.key == pygame.K_ESCAPE:
                         self.createMenu()
                         pygame.quit()
                         break
