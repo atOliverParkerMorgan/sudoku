@@ -13,6 +13,36 @@ class Board:
         # 2d board with all sudoku Nodes
         self.board: List[List[Node]] = []
 
+    def saveBoard(self):
+        with open('savedBoard.csv', 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(self.getValues())
+
+    def loadBoard(self):
+        with open('savedBoard.csv', 'rt') as f:
+            reader = csv.reader(f, delimiter=',')
+
+            y = 0
+
+            for line in reader:
+                x = 0
+
+                for value in line:
+                    self.setValue(x, y, value)
+
+                    if x % 9 == 0 and x != 0:
+                        y += 1
+                        x = 0
+
+
+
+    def getValues(self):
+        output = []
+        for line in self.board:
+            for node in line:
+                output.append(node.value)
+        return output
+
     def fillBoard(self):
         # reset board
         self.board: List[List[Node]] = []

@@ -1,6 +1,5 @@
 import sys
-from threading import Thread
-
+from os.path import exists
 import pygame
 import pygame_menu
 from pygame_menu.examples import create_example_window
@@ -178,6 +177,7 @@ class Graphics:
                         self.board.setValue(self.selectedX, self.selectedY, 0)
 
                     elif event.key == pygame.K_ESCAPE:
+                        self.board.saveBoard()
                         self.createMenu()
                         pygame.quit()
                         break
@@ -194,24 +194,29 @@ class Graphics:
                             else:
                                 self.isValid = False
 
-                    elif event.key == pygame.K_s and not self.isSolving:
+                    elif event.key == pygame.K_s:
 
-                        self.nodes = self.board.getNodesWithoutValue()
-
-                        if len(self.nodes) == 0:
-                            self.board.resetNodesOnBoard(self.nodesCopy)
+                        if self.isSolving:
+                            self.board.resetNodesOnBoardThatUserChanged()
+                            self.isSolving = False
 
                         else:
-                            self.board.resetNodesOnBoardThatUserChanged()
                             self.nodes = self.board.getNodesWithoutValue()
-                            self.nodesCopy = self.nodes.copy()
-                            self.isSolving = True
 
-                            self.index = 0
-                            self.numberOfSolutions = 0
-                            self.startSearch = {}
-                            for i in range(self.board.width * self.board.height + 1):
-                                self.startSearch[i] = 1
+                            if len(self.nodes) == 0:
+                                self.board.resetNodesOnBoard(self.nodesCopy)
+
+                            else:
+                                self.board.resetNodesOnBoardThatUserChanged()
+                                self.nodes = self.board.getNodesWithoutValue()
+                                self.nodesCopy = self.nodes.copy()
+                                self.isSolving = True
+
+                                self.index = 0
+                                self.numberOfSolutions = 0
+                                self.startSearch = {}
+                                for i in range(self.board.width * self.board.height + 1):
+                                    self.startSearch[i] = 1
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     indexX = int(mouseX / self.SQUARE_SIDE_SIZE)
@@ -234,6 +239,10 @@ class Graphics:
             self.board.setToRandomPreGeneratedBoard()
             self.evenHandler()
 
+        def resumeGame():
+            self.board.loadBoard()
+            self.evenHandler()
+
         # create menu
         surface = create_example_window('SuDoku - Hint: PRESS "S" TO SOLVE',
                                         (self.BOARD_WIDTH, self.BOARD_HEIGHT))
@@ -242,6 +251,9 @@ class Graphics:
                                      theme=pygame_menu.themes.THEME_DARK)
 
         self.menu.add.button('NEW GAME', newGame)
+        if exists("savedBoard.csv"):
+            self.menu.add.button('RESUME', resumeGame)
+
         self.menu.add.button('QUIT', pygame_menu.events.EXIT)
         self.menu.add.label('')
 
