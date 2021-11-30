@@ -5,6 +5,7 @@ import pygame_menu
 from pygame_menu.examples import create_example_window
 
 pygame.init()
+HINT_FONT = pygame.font.Font(None, 16)
 FONT = pygame.font.Font(None, 32)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -52,13 +53,6 @@ class Graphics:
         self.selectedX = None
         self.selectedY = None
 
-        # graphical representation of board
-        self.numberText = []
-        for _ in range(self.board.width):
-            line = []
-            for _ in range(self.board.height):
-                line.append(FONT)
-            self.numberText.append(line)
 
         self.menu = None
 
@@ -69,9 +63,11 @@ class Graphics:
         self.timer = 0
         self.ADD_TO_TIMER = self.CLOCK.tick(30) / 1000
 
+        self.noteNumbers = [[] for _ in range(self.board.width * self.board.height)]
+
     def isDoubleClick(self):
         self.timer += self.ADD_TO_TIMER
-        return self.timer < 3
+        return self.timer < 4
 
     def showBoard(self):
 
@@ -114,8 +110,11 @@ class Graphics:
                         if x == node[0] and y == node[1]:
                             color = RED
 
-                text = self.numberText[y][x].render(symbol, False, color)
+                text = FONT.render(symbol, False, color)
                 self.SCREEN.blit(text, (graphicsX, graphicsY))
+
+                hintText = HINT_FONT.render(self.noteNumbers[(x % 9 + y)][0], (graphicsX, graphicsY), color)
+
 
     def showSelected(self, x, y, color):
 
@@ -248,7 +247,7 @@ class Graphics:
                                 for i in range(self.board.width * self.board.height + 1):
                                     self.startSearch[i] = 1
 
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     indexX = int(mouseX / self.SQUARE_SIDE_SIZE)
                     indexY = int(mouseY / self.SQUARE_SIDE_SIZE)
 
@@ -261,6 +260,9 @@ class Graphics:
                     else:
                         self.timer = 0
                         self.doubleClick = True
+
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+                    print("left")
 
             if self.doubleClick:
                 self.isDoubleClick()

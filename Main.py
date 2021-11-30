@@ -27,7 +27,7 @@ def generateSuDokuBoards(numberOfBoards):
                 board.fillBoard()
                 if board.generatePuzzle(10000000):
 
-                    output = board.getValues()
+                    output = board.getValuesDefault()
 
                     if output not in reader:
                         print("\nSUCCESS\n\n")
