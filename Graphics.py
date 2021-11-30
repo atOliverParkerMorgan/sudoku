@@ -53,7 +53,6 @@ class Graphics:
         self.selectedX = None
         self.selectedY = None
 
-
         self.menu = None
 
         # check for double click
@@ -63,7 +62,9 @@ class Graphics:
         self.timer = 0
         self.ADD_TO_TIMER = self.CLOCK.tick(30) / 1000
 
-        self.noteNumbers = [[] for _ in range(self.board.width * self.board.height)]
+        self.noteNumbers = [[0, 0, 0,
+                             0, 0, 0,
+                             0, 0, 0] for _ in range(self.board.width * self.board.height)]
 
     def isDoubleClick(self):
         self.timer += self.ADD_TO_TIMER
@@ -99,22 +100,24 @@ class Graphics:
                 symbol = str(self.board.board[y][x].value)
                 if symbol == "0":
                     symbol = ""
+                    for nums in self.noteNumbers[(x % 9 + y)]:
+                        hintText = HINT_FONT.render(str(nums), False, RED)
+                        self.SCREEN.blit(hintText, (graphicsX, graphicsY))
 
-                color = BLUE
+                else:
 
-                if self.board.board[y][x].userCannotChange or len(self.board.getNodesWithoutValue()) == 0:
-                    color = BLACK
+                    color = BLUE
 
-                if self.invalidNodes is not None:
-                    for node in self.invalidNodes:
-                        if x == node[0] and y == node[1]:
-                            color = RED
+                    if self.board.board[y][x].userCannotChange or len(self.board.getNodesWithoutValue()) == 0:
+                        color = BLACK
 
-                text = FONT.render(symbol, False, color)
-                self.SCREEN.blit(text, (graphicsX, graphicsY))
+                    if self.invalidNodes is not None:
+                        for node in self.invalidNodes:
+                            if x == node[0] and y == node[1]:
+                                color = RED
 
-                hintText = HINT_FONT.render(self.noteNumbers[(x % 9 + y)][0], (graphicsX, graphicsY), color)
-
+                    text = FONT.render(symbol, False, color)
+                    self.SCREEN.blit(text, (graphicsX, graphicsY))
 
     def showSelected(self, x, y, color):
 
