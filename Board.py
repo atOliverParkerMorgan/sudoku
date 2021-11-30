@@ -14,34 +14,56 @@ class Board:
         self.board: List[List[Node]] = []
 
     def saveBoard(self):
-        with open('savedBoard.csv', 'w', newline='', encoding='utf-8') as f:
+        open('savedBoard.csv', 'w').close()
+        with open('savedBoard.csv', 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(self.getValues())
+            writer.writerow(self.getValuesDefault())
+            writer.writerow(self.getValuesUser())
 
     def loadBoard(self):
         with open('savedBoard.csv', 'rt') as f:
-            reader = csv.reader(f, delimiter=',')
+            reader = list(csv.reader(f, delimiter=','))
+            self.setBoardWithDefaultValues(reader[0])
+            self.setBoardWithUserValues(reader[1])
 
-            y = 0
-
-            for line in reader:
-                x = 0
-
-                for value in line:
-                    self.setValue(x, y, value)
-
-                    if x % 9 == 0 and x != 0:
-                        y += 1
-                        x = 0
-
-
-
-    def getValues(self):
+    def getValuesDefault(self):
         output = []
         for line in self.board:
             for node in line:
-                output.append(node.value)
+                if node.userCannotChange:
+                    output.append(node.value)
+                else:
+                    output.append(0)
         return output
+
+    def getValuesUser(self):
+        output = []
+        for line in self.board:
+            for node in line:
+                if not node.userCannotChange:
+                    output.append(node.value)
+                else:
+                    output.append(0)
+        return output
+
+    def setBoardWithDefaultValues(self, values):
+        # set all node value to a newly chosen value
+        index = 0
+        for y in range(self.height):
+            for x in range(self.width):
+                self.setValue(x, y, values[index])
+                self.getBoardNode(x, y).userCannotChange = str(values[index]) != "0"
+                index += 1
+
+    def setBoardWithUserValues(self, values):
+        # set all node value to a newly chosen value
+        index = 0
+        for y in range(self.height):
+            for x in range(self.width):
+                if not self.getBoardNode(x, y).userCannotChange:
+                    self.setValue(x, y, values[index])
+
+                index += 1
 
     def fillBoard(self):
         # reset board
@@ -68,25 +90,19 @@ class Board:
                 if not node.userCannotChange:
                     self.setValue(node.x, node.y, 0)
 
-    def setBoardWithValues(self, values):
-        # set all node value to a newly chosen value
-        index = 0
-        for y in range(self.height):
-            for x in range(self.width):
-                self.setValue(x, y, values[index])
-                self.getBoardNode(x, y).userCannotChange = str(values[index]) != "0"
-                index += 1
+    def getInvalidNode(self, node: Node, value):
+        output = []
 
-    def isNodeValid(self, node, value):
         # check horizontally for the same value
         for x in range(self.width):
             if str(self.getBoardNode(x, node.y).value) == str(value):
-                return False
+                output.append((x, node.y))
 
         # check vertically for the same value
         for y in range(self.height):
             if str(self.getBoardNode(node.x, y).value) == str(value):
-                return False
+                if (node.x, y) not in output:
+                    output.append((node.x, y))
 
         # check squares
         # base square index => startRow, startCol
@@ -96,12 +112,13 @@ class Board:
         for x in range(3):
             for y in range(3):
                 if str(self.getBoardNode(x + startRow, y + startCol).value) == str(value):
-                    return False
+                    if (x + startRow, y + startCol) not in output:
+                        output.append((x + startRow, y + startCol))
 
-        return True
+        return output
 
     def tryToSetValueOfNode(self, x, y, value):
-        if self.isNodeValid(self.getBoardNode(x, y), 1):
+        if len(self.getInvalidNode(self.getBoardNode(x, y), 1)) == 0:
             self.setValue(x, y, value)
 
     def printBoard(self):
@@ -149,7 +166,7 @@ class Board:
         # check nodes from 1-9
         for num in range(1, 10):
 
-            if self.isNodeValid(self.getBoardNode(x, y), num):
+            if len(self.getInvalidNode(self.getBoardNode(x, y), num)) == 0:
                 # set node to valid value
                 self.getBoardNode(x, y).value = num
 
@@ -195,7 +212,7 @@ class Board:
 
             if isinstance(output, tuple):
                 # hasn't found solution => update variables
-                nodes, nodesCopy, index, startSearch, numberOfSolutions,  numberOfLoops = output
+                nodes, nodesCopy, index, startSearch, numberOfSolutions, numberOfLoops = output
 
             else:
                 # has found solution
@@ -207,7 +224,8 @@ class Board:
 
         return numberOfSolutions
 
-    def backTrackingWithoutRecursionCycle(self, nodes, nodesCopy, index, startSearch, numberOfSolutions, saveSolution=True,
+    def backTrackingWithoutRecursionCycle(self, nodes, nodesCopy, index, startSearch, numberOfSolutions,
+                                          saveSolution=True,
                                           limit=1, maxNumberOfLoops=10000000, numberOfLoops=0):
         """
         This function is need because pygame doesn't support multithreading.
@@ -261,7 +279,7 @@ class Board:
 
         for num in range(startSearch[index], 10):
 
-            if self.isNodeValid(nodes[index], num):
+            if len(self.getInvalidNode(nodes[index], num)) == 0:
                 self.getBoardNode(x, y).value = num
 
                 # set start node begging value for future searches
@@ -294,7 +312,7 @@ class Board:
             x, y = nodes[randomIndex].x, nodes[randomIndex].y
 
             # get all valid values for this node
-            validNumList = [num for num in range(1, 10) if self.isNodeValid(nodes[randomIndex], num)]
+            validNumList = [num for num in range(1, 10) if len(self.getInvalidNode(nodes[randomIndex], num)) == 0]
 
             # set the node to a random value for all valid values
             self.setValue(x, y, validNumList[random.randint(0, len(validNumList) - 1)])
@@ -368,7 +386,11 @@ class Board:
         return True
 
     def setToRandomPreGeneratedBoard(self):
-        with open('preGeneratedSudokuBoards.csv', 'rt') as f2:
-            reader = list(csv.reader(f2, delimiter=','))
-            randomBoardIndex = random.randint(0, sum(1 for _ in reader) - 1)
-            self.setBoardWithValues(reader[randomBoardIndex])
+        with open('preGeneratedSudokuBoards.csv', 'rt') as f:
+            reader = list(csv.reader(f, delimiter=','))
+            self.setBoardWithDefaultValues(reader[random.randint(0, sum(1 for _ in reader) - 1)])
+
+    def setToPreGeneratedBoard(self, index):
+        with open('preGeneratedSudokuBoards.csv', 'rt') as f:
+            reader = list(csv.reader(f, delimiter=','))
+            self.setBoardWithDefaultValues(reader[index])

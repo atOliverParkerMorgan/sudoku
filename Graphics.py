@@ -9,6 +9,7 @@ FONT = pygame.font.Font(None, 32)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (34, 139, 34)
+GREY = (128, 128, 128)
 RED = (255, 69, 0)
 BLUE = (0, 0, 255)
 
@@ -27,6 +28,8 @@ class Graphics:
         self.startSearch = {}
         self.index = 0
         self.nodesCopy = None
+
+        self.invalidNodes = []
 
         # initialize startSearch
         for i in range(self.board.width * self.board.height + 1):
@@ -49,9 +52,6 @@ class Graphics:
         self.selectedX = None
         self.selectedY = None
 
-        # is selected node valid
-        self.isValid = True
-
         # graphical representation of board
         self.numberText = []
         for _ in range(self.board.width):
@@ -61,6 +61,17 @@ class Graphics:
             self.numberText.append(line)
 
         self.menu = None
+
+        # check for double click
+        self.doubleClick = False
+
+        # timer for double click
+        self.timer = 0
+        self.ADD_TO_TIMER = self.CLOCK.tick(30) / 1000
+
+    def isDoubleClick(self):
+        self.timer += self.ADD_TO_TIMER
+        return self.timer < 3
 
     def showBoard(self):
 
@@ -98,10 +109,15 @@ class Graphics:
                 if self.board.board[y][x].userCannotChange or len(self.board.getNodesWithoutValue()) == 0:
                     color = BLACK
 
+                if self.invalidNodes is not None:
+                    for node in self.invalidNodes:
+                        if x == node[0] and y == node[1]:
+                            color = RED
+
                 text = self.numberText[y][x].render(symbol, False, color)
                 self.SCREEN.blit(text, (graphicsX, graphicsY))
 
-    def showSelected(self, x, y):
+    def showSelected(self, x, y, color):
 
         # show selected
 
@@ -128,10 +144,8 @@ class Graphics:
                                      self.SQUARE_SIDE_SIZE - boarderBackY)
 
         # change color depending if current user input is valid or not
-        if self.isValid and not self.board.board[y][x].userCannotChange:
-            self.SCREEN.fill(GREEN, selectedSquare)
-        else:
-            self.SCREEN.fill(RED, selectedSquare)
+
+        self.SCREEN.fill(color, selectedSquare)
 
     def evenHandler(self):
         # handle events
@@ -156,7 +170,24 @@ class Graphics:
             isSelected = self.selectedX is not None and self.selectedY is not None
 
             if isSelected:
-                self.showSelected(self.selectedX, self.selectedY)
+
+                for x in range(self.board.width):
+                    self.showSelected(x, self.selectedY, GREY)
+
+                for y in range(self.board.width):
+                    self.showSelected(self.selectedX, y, GREY)
+
+                startRow = self.selectedX - self.selectedX % 3
+                startCol = self.selectedY - self.selectedY % 3
+
+                for x in range(3):
+                    for y in range(3):
+                        self.showSelected(startRow + x, startCol + y, GREY)
+
+                if not self.board.board[self.selectedY][self.selectedX].userCannotChange:
+                    self.showSelected(self.selectedX, self.selectedY, GREEN)
+                else:
+                    self.showSelected(self.selectedX, self.selectedY, BLUE)
 
             self.showNumbersOnBoard()
 
@@ -165,6 +196,7 @@ class Graphics:
             # pygame events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    self.board.saveBoard()
                     pygame.quit()
                     sys.exit()
 
@@ -185,14 +217,12 @@ class Graphics:
                     elif event.unicode in validInput and isSelected and not self.isSolving:
 
                         if not event.unicode == '':
-
-                            if self.board.isNodeValid(self.board.board[self.selectedY][self.selectedX],
-                                                      int(event.unicode)) \
-                                    and not self.board.getBoardNode(self.selectedX, self.selectedY).userCannotChange:
+                            self.invalidNodes = self.board.getInvalidNode(
+                                self.board.board[self.selectedY][self.selectedX],
+                                int(event.unicode))
+                            if len(self.invalidNodes) == 0 and not self.board.getBoardNode(self.selectedX,
+                                                                                           self.selectedY).userCannotChange:
                                 self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
-                                self.isValid = True
-                            else:
-                                self.isValid = False
 
                     elif event.key == pygame.K_s:
 
@@ -223,7 +253,17 @@ class Graphics:
                     indexY = int(mouseY / self.SQUARE_SIDE_SIZE)
 
                     self.selectedX, self.selectedY = indexX, indexY
-                    self.isValid = True
+                    self.invalidNodes = []
+
+                    if self.isDoubleClick() and self.doubleClick:
+                        self.selectedX, self.selectedY = None, None
+                        self.doubleClick = False
+                    else:
+                        self.timer = 0
+                        self.doubleClick = True
+
+            if self.doubleClick:
+                self.isDoubleClick()
 
             pygame.display.update()
 
