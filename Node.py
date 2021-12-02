@@ -4,6 +4,7 @@ class Node:
         self.y = y
         self.value: int = value
         self.userCannotChange = False
+        self.noteNums = []
 
     def __str__(self):
         return f"|{self.value}|"

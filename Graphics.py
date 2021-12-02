@@ -5,14 +5,16 @@ import pygame_menu
 from pygame_menu.examples import create_example_window
 
 pygame.init()
-HINT_FONT = pygame.font.Font(None, 16)
 FONT = pygame.font.Font(None, 32)
+NOTE_FONT = pygame.font.Font(None, 25)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (34, 139, 34)
 GREY = (128, 128, 128)
 RED = (255, 69, 0)
 BLUE = (0, 0, 255)
+BROWN = (255, 153, 51)
+DARK_GREEN = (51, 102, 0)
 
 
 class Graphics:
@@ -62,13 +64,11 @@ class Graphics:
         self.timer = 0
         self.ADD_TO_TIMER = self.CLOCK.tick(30) / 1000
 
-        self.noteNumbers = [[0, 0, 0,
-                             0, 0, 0,
-                             0, 0, 0] for _ in range(self.board.width * self.board.height)]
+        self.addingNotes = False
 
     def isDoubleClick(self):
         self.timer += self.ADD_TO_TIMER
-        return self.timer < 4
+        return self.timer < 3
 
     def showBoard(self):
 
@@ -99,13 +99,21 @@ class Graphics:
 
                 symbol = str(self.board.board[y][x].value)
                 if symbol == "0":
-                    symbol = ""
-                    for nums in self.noteNumbers[(x % 9 + y)]:
-                        hintText = HINT_FONT.render(str(nums), False, RED)
-                        self.SCREEN.blit(hintText, (graphicsX, graphicsY))
+                    noteNums = self.board.getBoardNode(x, y).noteNums
+                    biasY = - 15
+                    biasX = - 15
+                    for noteNum in noteNums:
+
+                        if noteNum != 0:
+                            self.SCREEN.blit(NOTE_FONT.render(str(noteNum), False, BROWN), (graphicsX + biasX,
+                                                                                            graphicsY + biasY))
+                            if biasX == 15:
+                                biasX = - 15
+                                biasY += 15
+                            else:
+                                biasX += 15
 
                 else:
-
                     color = BLUE
 
                     if self.board.board[y][x].userCannotChange or len(self.board.getNodesWithoutValue()) == 0:
@@ -186,7 +194,10 @@ class Graphics:
                     for y in range(3):
                         self.showSelected(startRow + x, startCol + y, GREY)
 
-                if not self.board.board[self.selectedY][self.selectedX].userCannotChange:
+                if self.addingNotes:
+                    self.showSelected(self.selectedX, self.selectedY, DARK_GREEN)
+
+                elif not self.board.board[self.selectedY][self.selectedX].userCannotChange:
                     self.showSelected(self.selectedX, self.selectedY, GREEN)
                 else:
                     self.showSelected(self.selectedX, self.selectedY, BLUE)
@@ -219,12 +230,23 @@ class Graphics:
                     elif event.unicode in validInput and isSelected and not self.isSolving:
 
                         if not event.unicode == '':
-                            self.invalidNodes = self.board.getInvalidNode(
-                                self.board.board[self.selectedY][self.selectedX],
-                                int(event.unicode))
-                            if len(self.invalidNodes) == 0 and not self.board.getBoardNode(self.selectedX,
+                            node = self.board.getBoardNode(self.selectedX, self.selectedY)
+                            inputValue = str(event.unicode)
+
+                            if self.addingNotes:
+                                if inputValue in node.noteNums:
+                                    node.noteNums.remove(inputValue)
+                                else:
+                                    node.noteNums.append(inputValue)
+                                    node.noteNums.sort()
+
+                            else:
+                                self.invalidNodes = self.board.getInvalidNode(
+                                    self.board.board[self.selectedY][self.selectedX],
+                                    int(event.unicode))
+                                if len(self.invalidNodes) == 0 and not self.board.getBoardNode(self.selectedX,
                                                                                            self.selectedY).userCannotChange:
-                                self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
+                                    self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
 
                     elif event.key == pygame.K_s:
 
@@ -250,7 +272,12 @@ class Graphics:
                                 for i in range(self.board.width * self.board.height + 1):
                                     self.startSearch[i] = 1
 
-                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+
+
+                    self.addingNotes = event.button == 3
+
+
                     indexX = int(mouseX / self.SQUARE_SIDE_SIZE)
                     indexY = int(mouseY / self.SQUARE_SIDE_SIZE)
 
@@ -260,12 +287,11 @@ class Graphics:
                     if self.isDoubleClick() and self.doubleClick:
                         self.selectedX, self.selectedY = None, None
                         self.doubleClick = False
+                        self.addingNotes = False
                     else:
                         self.timer = 0
                         self.doubleClick = True
 
-                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
-                    print("left")
 
             if self.doubleClick:
                 self.isDoubleClick()

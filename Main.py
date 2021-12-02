@@ -1,5 +1,4 @@
 import csv
-
 from Board import Board
 from Graphics import Graphics
 
@@ -36,7 +35,24 @@ def generateSuDokuBoards(numberOfBoards):
                         print("this board is already preGenerated")
 
 
+def solveSuDokuBoard():
+    with open('preSolvedSudokuBoards.csv', 'a') as f:
+        with open('preGeneratedSudokuBoards.csv', 'rt') as f2:
+            reader = list(csv.reader(f2, delimiter=','))
+            writer = csv.writer(f)
+
+            for line in reader:
+
+                board = Board()
+                board.fillBoard()
+                board.setBoardWithDefaultValues(line)
+                board.backTrackingWithoutRecursion()
+                print("SOLVED")
+                writer.writerow(board.getValuesDefault())
+
+
 if __name__ == '__main__':
+    solveSuDokuBoard()
     # checkDataSet()
 
     board = Board()
