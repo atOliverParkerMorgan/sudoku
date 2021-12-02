@@ -46,6 +46,14 @@ class Board:
                     output.append(0)
         return output
 
+    def getValues(self):
+        output = []
+        for line in self.board:
+            for node in line:
+                output.append(node.value)
+
+        return output
+
     def setBoardWithDefaultValues(self, values):
         # set all node value to a newly chosen value
         index = 0

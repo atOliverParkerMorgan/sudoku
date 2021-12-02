@@ -48,7 +48,8 @@ def solveSuDokuBoard():
                 board.setBoardWithDefaultValues(line)
                 board.backTrackingWithoutRecursion()
                 print("SOLVED")
-                writer.writerow(board.getValuesDefault())
+                print(board.getValues())
+                writer.writerow(board.getValues())
 
 
 if __name__ == '__main__':
