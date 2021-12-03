@@ -240,13 +240,18 @@ class Graphics:
                                     node.noteNums.append(inputValue)
                                     node.noteNums.sort()
 
-                            else:
-                                self.invalidNodes = self.board.getInvalidNode(
-                                    self.board.board[self.selectedY][self.selectedX],
-                                    int(event.unicode))
-                                if len(self.invalidNodes) == 0 and not self.board.getBoardNode(self.selectedX,
-                                                                                           self.selectedY).userCannotChange:
+                            elif not self.board.getBoardNode(self.selectedX, self.selectedY).userCannotChange:
+                                if self.board.getBoardNode(self.selectedX, self.selectedY).value == int(event.unicode):
+                                    self.board.setValue(self.selectedX, self.selectedY, 0)
+                                else:
                                     self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
+                                    self.invalidNodes = self.board.getInvalidNode(
+                                        self.board.board[self.selectedY][self.selectedX],
+                                        int(event.unicode))
+
+                                    # the input is valid
+                                    if len(self.invalidNodes) == 1:
+                                        self.invalidNodes = []
 
                     elif event.key == pygame.K_s:
 
@@ -274,9 +279,7 @@ class Graphics:
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
 
-
                     self.addingNotes = event.button == 3
-
 
                     indexX = int(mouseX / self.SQUARE_SIDE_SIZE)
                     indexY = int(mouseY / self.SQUARE_SIDE_SIZE)
@@ -291,7 +294,6 @@ class Graphics:
                     else:
                         self.timer = 0
                         self.doubleClick = True
-
 
             if self.doubleClick:
                 self.isDoubleClick()

@@ -35,7 +35,7 @@ def generateSuDokuBoards(numberOfBoards):
                         print("this board is already preGenerated")
 
 
-def solveSuDokuBoard():
+def solveAndSaveSuDokuBoard():
     with open('preSolvedSudokuBoards.csv', 'a') as f:
         with open('preGeneratedSudokuBoards.csv', 'rt') as f2:
             reader = list(csv.reader(f2, delimiter=','))
@@ -46,14 +46,14 @@ def solveSuDokuBoard():
                 board = Board()
                 board.fillBoard()
                 board.setBoardWithDefaultValues(line)
-                board.backTrackingWithoutRecursion()
+                board.backTrackingRecursion(board.getNodesWithoutValue())
+                board.printBoard()
                 print("SOLVED")
-                print(board.getValues())
                 writer.writerow(board.getValues())
 
 
 if __name__ == '__main__':
-    solveSuDokuBoard()
+    # solveAndSaveSuDokuBoard()
     # checkDataSet()
 
     board = Board()
