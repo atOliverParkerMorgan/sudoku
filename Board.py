@@ -30,7 +30,7 @@ class Board:
         output = []
         for line in self.board:
             for node in line:
-                if node.userCannotChange:
+                if node.user_cannot_change:
                     output.append(node.value)
                 else:
                     output.append(0)
@@ -40,7 +40,7 @@ class Board:
         output = []
         for line in self.board:
             for node in line:
-                if not node.userCannotChange:
+                if not node.user_cannot_change:
                     output.append(node.value)
                 else:
                     output.append(0)
@@ -60,7 +60,7 @@ class Board:
         for y in range(self.height):
             for x in range(self.width):
                 self.setValue(x, y, values[index])
-                self.getBoardNode(x, y).userCannotChange = str(values[index]) != "0"
+                self.getBoardNode(x, y).user_cannot_change = str(values[index]) != "0"
                 index += 1
 
     def setBoardWithUserValues(self, values):
@@ -68,7 +68,7 @@ class Board:
         index = 0
         for y in range(self.height):
             for x in range(self.width):
-                if not self.getBoardNode(x, y).userCannotChange:
+                if not self.getBoardNode(x, y).user_cannot_change:
                     self.setValue(x, y, values[index])
 
                 index += 1
@@ -95,38 +95,48 @@ class Board:
         for x in range(self.width):
             for y in range(self.height):
                 node = self.getBoardNode(x, y)
-                if not node.userCannotChange:
+                if not node.user_cannot_change:
                     self.setValue(node.x, node.y, 0)
 
-    def getInvalidNode(self, node: Node, value):
-        output = []
+
+    def isNodeValid(self, node_x, node_y, value, check_only_if_is_valid=False):
+        blocking_nodes = []
 
         # check horizontally for the same value
         for x in range(self.width):
-            if str(self.getBoardNode(x, node.y).value) == str(value):
-                output.append((x, node.y))
+            if self.getBoardNode(x, node_y).value == value:
+                if check_only_if_is_valid:
+                    return False
+                blocking_nodes.append((x, node_y))
 
         # check vertically for the same value
         for y in range(self.height):
-            if str(self.getBoardNode(node.x, y).value) == str(value):
-                if (node.x, y) not in output:
-                    output.append((node.x, y))
+            if self.getBoardNode(node_x, y).value == value:
+                if (node_x, y) not in blocking_nodes:
+                    if check_only_if_is_valid:
+                        return False
+                    blocking_nodes.append((node_x, y))
 
         # check squares
         # base square index => startRow, startCol
-        startRow = node.x - node.x % 3
-        startCol = node.y - node.y % 3
+        startRow = node_x - node_x % 3
+        startCol = node_y - node_y % 3
 
         for x in range(3):
             for y in range(3):
-                if str(self.getBoardNode(x + startRow, y + startCol).value) == str(value):
-                    if (x + startRow, y + startCol) not in output:
-                        output.append((x + startRow, y + startCol))
+                if self.getBoardNode(x + startRow, y + startCol).value == value:
+                    if (x + startRow, y + startCol) not in blocking_nodes:
+                        if check_only_if_is_valid:
+                            return False
+                        blocking_nodes.append((x + startRow, y + startCol))
 
-        return output
+        if check_only_if_is_valid:
+            return True
+    
+        return blocking_nodes
 
     def tryToSetValueOfNode(self, x, y, value):
-        if len(self.getInvalidNode(self.getBoardNode(x, y), 1)) == 0:
+        if len(self.isNodeValid(self.getBoardNode(x, y), 1)) == 0:
             self.setValue(x, y, value)
 
     def printBoard(self):
@@ -158,158 +168,9 @@ class Board:
 
         return nodesWithoutValue
 
-    def backTrackingRecursion(self, nodes, index=0):
-        """
-        :param nodes: all nodes that must be solved
-        :param index: the current index of node that is being solved
-        :return: True if a solution as been found else False
-        """
 
-        if index == len(nodes):
-            # a valid solution to the board has been found
-            return True
 
-        x, y = nodes[index].x, nodes[index].y
-
-        # check nodes from 1-9
-        for num in range(1, 10):
-
-            if len(self.getInvalidNode(self.getBoardNode(x, y), num)) == 0:
-                # set node to valid value
-                self.getBoardNode(x, y).value = num
-
-                # check if next node (node[index + 1]) is valid
-                if self.backTrackingRecursion(nodes, index + 1):
-                    return True
-
-            # num is not a valid value => reset
-            self.getBoardNode(x, y).value = 0
-
-        # no valid value for this board combination
-        return False
-
-    def backTrackingWithoutRecursion(self, limit=1, saveSolution=True, maxNumberOfLoops=-1):
-        """
-        :param limit: a limit of solution to search for
-        :param saveSolution: if True save the last solution to the self.board
-        :param maxNumberOfLoops: number of loops the algorithm is allowed to go through. -1 if infinite
-        :return: number of solution found; -1 if the algorithm exceeds the maxNumberOfLoops
-        """
-        numberOfLoops = 0
-
-        numberOfSolutions = 0
-        nodes = self.getNodesWithoutValue()
-
-        # :startSearch: key => index of node; value => last valid value of node
-        # used to know from where to start searching for valid value
-        startSearch = {}
-
-        # currentIndex
-        index = 0
-
-        # save nodes to copy to reset later
-        nodesCopy = nodes.copy()
-
-        # initialize startSearch
-        for i in range(self.width * self.height + 1):
-            startSearch[i] = 1
-
-        while index >= 0:
-            output = self.backTrackingWithoutRecursionCycle(nodes, nodesCopy, index, startSearch, saveSolution,
-                                                            numberOfSolutions, limit, maxNumberOfLoops, numberOfLoops)
-
-            if isinstance(output, tuple):
-                # hasn't found solution => update variables
-                nodes, nodesCopy, index, startSearch, numberOfSolutions, numberOfLoops = output
-
-            else:
-                # has found solution
-                numberOfSolutions = output
-                break
-
-        if not saveSolution:
-            self.resetNodesOnBoard(nodesCopy)
-
-        return numberOfSolutions
-
-    def backTrackingWithoutRecursionCycle(self, nodes, nodesCopy, index, startSearch, numberOfSolutions,
-                                          saveSolution=True,
-                                          limit=1, maxNumberOfLoops=10000000, numberOfLoops=0):
-        """
-        This function is need because pygame doesn't support multithreading.
-        So if we want to display the solution we need to solve one cycle per an event update.
-
-        :param nodes: The nodes that are being searched
-        :param nodesCopy: A copy of the begging nodes
-        :param index: An index of the node that is currently being solved
-        :param startSearch: A dictionary of all the values of the nodes that have been solved
-        :param saveSolution: Boolean that determines if the the solution should be saved in self.board
-        :param numberOfSolutions: The number of solutions that the puzzle has
-        :param limit: The limit at witch the algorithm should stops searching for solutions
-        :param maxNumberOfLoops: A maximum number of loops that the algorithm should go through before stopping (-1 is infinitive)
-        :param numberOfLoops: Current number of loops that the algorithm has gone through
-        :return: if a solution has been found => number of solutions to the input suDoku board (the input suDoku board is self.board)
-                 else => all input params
-        """
-
-        if maxNumberOfLoops != -1:
-            numberOfLoops += 1
-            if numberOfLoops >= maxNumberOfLoops:
-                return -1
-
-            # the algorithm has found a solution, because index is past the last node
-        if index == len(nodes):
-            numberOfSolutions += 1
-
-            if numberOfSolutions == limit:
-
-                # reset board
-                if not saveSolution:
-                    self.resetNodesOnBoard(nodesCopy)
-
-                return numberOfSolutions
-
-            # print the current state of the board
-            # print()
-            # self.printBoard()
-            # print()
-
-            # limit has not yet been reached
-            # move to last node
-            index -= 1
-            # make last node invalid so that the algorithm has to find another combination that is valid
-            nodes[index].value += 1
-
-        x, y = nodes[index].x, nodes[index].y
-
-        # does this node have valid value
-        found = False
-
-        for num in range(startSearch[index], 10):
-
-            if len(self.getInvalidNode(nodes[index], num)) == 0:
-                self.getBoardNode(x, y).value = num
-
-                # set start node begging value for future searches
-                startSearch[index] = num + 1
-                found = True
-
-                # check next node
-                index += 1
-
-                break
-
-        if not found:
-            # reset not because it has no valid value
-            self.getBoardNode(x, y).value = 0
-            startSearch[index] = 1
-
-            # move to previous node
-            index -= 1
-
-        return nodes, nodesCopy, index, startSearch, numberOfSolutions, numberOfLoops
-
-    def generatePuzzle(self, maxSearchDepth=10000000):
+    def generatePuzzle(self, maxSearchDepth=100_000):
         nodes = self.getNodesWithoutValue()
         lastP = 0
 
@@ -320,13 +181,14 @@ class Board:
             x, y = nodes[randomIndex].x, nodes[randomIndex].y
 
             # get all valid values for this node
-            validNumList = [num for num in range(1, 10) if len(self.getInvalidNode(nodes[randomIndex], num)) == 0]
+            validNumList = [num for num in range(1, 10) if len(self.isNodeValid(nodes[randomIndex], num)) == 0]
 
             # set the node to a random value for all valid values
             self.setValue(x, y, validNumList[random.randint(0, len(validNumList) - 1)])
 
             # if the board doesn't have a solution, because of the new value => reset
-            numberOfSolutions = self.backTrackingWithoutRecursion(1, False, maxSearchDepth)
+            # numberOfSolutions = self.backTrackingWithoutRecursion(1, False, maxSearchDepth)
+            numberOfSolutions = self.backTrackingWithoutRecursion(1, True, maxSearchDepth)
 
             # returns -1 if the algorithm searches through 10 000 000 loops without result
             # this puzzle is too costly to generate

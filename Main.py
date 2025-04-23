@@ -11,7 +11,7 @@ def checkDataSet():
 
         for line in board.board:
             for node in line:
-                if len(board.getInvalidNode(node, node.value)) > 1 and not str(node.value) == "0":
+                if len(board.isNodeValid(node, node.value)) > 1 and not str(node.value) == "0":
                     print(f"ERROR: {i}")
 
 

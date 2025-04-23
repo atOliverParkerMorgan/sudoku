@@ -3,8 +3,8 @@ class Node:
         self.x = x
         self.y = y
         self.value: int = value
-        self.userCannotChange = False
-        self.noteNums = []
+        self.user_cannot_change = False
+        self.note_nums = []
 
     def __str__(self):
         return f"|{self.value}|"

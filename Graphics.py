@@ -3,6 +3,7 @@ from os.path import exists
 import pygame
 import pygame_menu
 from pygame_menu.examples import create_example_window
+from Solver import Solver
 
 pygame.init()
 FONT = pygame.font.Font(None, 32)
@@ -19,30 +20,20 @@ DARK_GREEN = (51, 102, 0)
 
 class Graphics:
     def __init__(self, board):
-
         self.board = board
 
         # following variables are used to showing how puzzle is being solved
         self.isSolving = False
-
         self.numberOfSolutions = 0
-        self.nodes = None
+        self.emptyNodes = None
         self.savedSolution = None
-        self.startSearch = {}
-        self.index = 0
-        self.nodesCopy = None
-
+        self.currentIndex = 0
+        self.lastNodeValues = None
         self.invalidNodes = []
-
-        # initialize startSearch
-        for i in range(self.board.width * self.board.height + 1):
-            self.startSearch[i] = 1
 
         # pixel width of line
         self.BOLD_LINE = 3
-
         self.SQUARE_SIDE_SIZE = 50
-
         self.BOARD_HEIGHT = self.BOARD_WIDTH = self.SQUARE_SIDE_SIZE * 9 + self.BOLD_LINE - 1
 
         # pygame graphics tools
@@ -50,6 +41,8 @@ class Graphics:
         self.CLOCK = pygame.time.Clock()
         self.CLOCK.tick(20)
         self.SCREEN.fill(WHITE)
+
+        self.solver = None
 
         # selected node cords
         self.selectedX = None
@@ -71,7 +64,6 @@ class Graphics:
         return self.timer < 3
 
     def showBoard(self):
-
         fullScreen = pygame.Rect(0, 0, self.BOARD_WIDTH, self.BOARD_HEIGHT)
         self.SCREEN.fill(WHITE, fullScreen)
 
@@ -89,34 +81,31 @@ class Graphics:
             pygame.draw.line(self.SCREEN, BLACK, (0, y), (self.BOARD_WIDTH, y), n)
 
     def showNumbersOnBoard(self):
-
         # draw symbols on board
         for x, graphicsX in zip(range(self.board.width),
-                                range(int(self.SQUARE_SIDE_SIZE / 2) - 5, self.BOARD_WIDTH, self.SQUARE_SIDE_SIZE)):
+                               range(int(self.SQUARE_SIDE_SIZE / 2) - 5, self.BOARD_WIDTH, self.SQUARE_SIDE_SIZE)):
             for y, graphicsY in zip(range(self.board.height),
-                                    range(int(self.SQUARE_SIDE_SIZE / 2) - 8, self.BOARD_HEIGHT,
-                                          self.SQUARE_SIDE_SIZE)):
+                                   range(int(self.SQUARE_SIDE_SIZE / 2) - 8, self.BOARD_HEIGHT,
+                                         self.SQUARE_SIDE_SIZE)):
 
                 symbol = str(self.board.board[y][x].value)
                 if symbol == "0":
-                    noteNums = self.board.getBoardNode(x, y).noteNums
+                    note_nums = self.board.getBoardNode(x, y).note_nums
                     biasY = - 15
                     biasX = - 15
-                    for noteNum in noteNums:
-
-                        if noteNum != 0:
-                            self.SCREEN.blit(NOTE_FONT.render(str(noteNum), False, BROWN), (graphicsX + biasX,
+                    for note_num in note_nums:
+                        if note_num != 0:
+                            self.SCREEN.blit(NOTE_FONT.render(str(note_num), False, BROWN), (graphicsX + biasX,
                                                                                             graphicsY + biasY))
                             if biasX == 15:
                                 biasX = - 15
                                 biasY += 15
                             else:
                                 biasX += 15
-
                 else:
                     color = BLUE
 
-                    if self.board.board[y][x].userCannotChange or len(self.board.getNodesWithoutValue()) == 0:
+                    if self.board.board[y][x].user_cannot_change or len(self.board.getNodesWithoutValue()) == 0:
                         color = BLACK
 
                     if self.invalidNodes is not None:
@@ -128,7 +117,6 @@ class Graphics:
                     self.SCREEN.blit(text, (graphicsX, graphicsY))
 
     def showSelected(self, x, y, color):
-
         # show selected
 
         # account for lines that separate nodes
@@ -149,38 +137,33 @@ class Graphics:
 
         # create the square using rect
         selectedSquare = pygame.Rect(x * self.SQUARE_SIDE_SIZE + boarderFrontX,
-                                     y * self.SQUARE_SIDE_SIZE + boarderFrontY,
-                                     self.SQUARE_SIDE_SIZE - boarderBackX,
-                                     self.SQUARE_SIDE_SIZE - boarderBackY)
+                                    y * self.SQUARE_SIDE_SIZE + boarderFrontY,
+                                    self.SQUARE_SIDE_SIZE - boarderBackX,
+                                    self.SQUARE_SIDE_SIZE - boarderBackY)
 
         # change color depending if current user input is valid or not
-
         self.SCREEN.fill(color, selectedSquare)
 
-    def evenHandler(self):
+    def eventHandler(self):
         # handle events
-
         while True:
-
             self.showBoard()
 
             if self.isSolving:
-                output = self.board.backTrackingWithoutRecursionCycle(self.nodes, self.nodesCopy, self.index,
-                                                                      self.startSearch,
-                                                                      self.numberOfSolutions)
-
-                if isinstance(output, tuple):
-                    # hasn't found solution => update variables
-                    self.nodes, self.nodesCopy, self.index, self.startSearch, self.numberOfSolutions, _ = output
-
-                else:
-                    # has found solution
+                self.currentIndex, solutionsFound = self.solver.backtracking_solver_tick(
+                    self.lastNodeValues, 
+                    self.currentIndex,
+                    self.emptyNodes, 
+                    self.numberOfSolutions
+                )
+                
+                if self.currentIndex == -1:
+                    # Solution found or no more solutions possible
                     self.isSolving = False
 
             isSelected = self.selectedX is not None and self.selectedY is not None
 
             if isSelected:
-
                 for x in range(self.board.width):
                     self.showSelected(x, self.selectedY, GREY)
 
@@ -196,8 +179,7 @@ class Graphics:
 
                 if self.addingNotes:
                     self.showSelected(self.selectedX, self.selectedY, DARK_GREEN)
-
-                elif not self.board.board[self.selectedY][self.selectedX].userCannotChange:
+                elif not self.board.board[self.selectedY][self.selectedX].user_cannot_change:
                     self.showSelected(self.selectedX, self.selectedY, GREEN)
                 else:
                     self.showSelected(self.selectedX, self.selectedY, BLUE)
@@ -214,11 +196,10 @@ class Graphics:
                     sys.exit()
 
                 if event.type == pygame.KEYDOWN:
-
                     validInput = "123456789"
 
                     if event.key == pygame.K_BACKSPACE and not self.board.getBoardNode(self.selectedX,
-                                                                                       self.selectedY).userCannotChange:
+                                                                                      self.selectedY).user_cannot_change:
                         self.board.setValue(self.selectedX, self.selectedY, 0)
 
                     elif event.key == pygame.K_ESCAPE:
@@ -228,7 +209,6 @@ class Graphics:
                         break
 
                     elif event.unicode in validInput and isSelected and not self.isSolving:
-
                         if not event.unicode == '':
                             node = self.board.getBoardNode(self.selectedX, self.selectedY)
                             inputValue = str(event.unicode)
@@ -240,13 +220,13 @@ class Graphics:
                                     node.noteNums.append(inputValue)
                                     node.noteNums.sort()
 
-                            elif not self.board.getBoardNode(self.selectedX, self.selectedY).userCannotChange:
+                            elif not self.board.getBoardNode(self.selectedX, self.selectedY).user_cannot_change:
                                 if self.board.getBoardNode(self.selectedX, self.selectedY).value == int(event.unicode):
                                     self.board.setValue(self.selectedX, self.selectedY, 0)
                                 else:
                                     self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
-                                    self.invalidNodes = self.board.getInvalidNode(
-                                        self.board.board[self.selectedY][self.selectedX],
+                                    self.invalidNodes = self.board.isNodeValid(
+                                        self.selectedX, self.selectedY,
                                         int(event.unicode))
 
                                     # the input is valid
@@ -254,31 +234,30 @@ class Graphics:
                                         self.invalidNodes = []
 
                     elif event.key == pygame.K_s:
+                        self.solver = Solver(self.board, "backtracking", 1)
 
                         if self.isSolving:
                             self.board.resetNodesOnBoardThatUserChanged()
                             self.isSolving = False
-
                         else:
-                            self.nodes = self.board.getNodesWithoutValue()
+                            self.emptyNodes = self.board.getNodesWithoutValue()
 
-                            if len(self.nodes) == 0:
-                                self.board.resetNodesOnBoard(self.nodesCopy)
-
+                            if len(self.emptyNodes) == 0:
+                                self.board.resetNodesOnBoard(self.emptyNodes)
                             else:
                                 self.board.resetNodesOnBoardThatUserChanged()
-                                self.nodes = self.board.getNodesWithoutValue()
-                                self.nodesCopy = self.nodes.copy()
+                                self.emptyNodes = self.board.getNodesWithoutValue()
                                 self.isSolving = True
 
-                                self.index = 0
+                                self.currentIndex = 0
                                 self.numberOfSolutions = 0
-                                self.startSearch = {}
-                                for i in range(self.board.width * self.board.height + 1):
-                                    self.startSearch[i] = 1
+                                self.lastNodeValues = {}
+                                
+                                # Initialize lastNodeValues for each empty node
+                                for node in self.emptyNodes:
+                                    self.lastNodeValues[node] = 1
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-
                     self.addingNotes = event.button == 3
 
                     indexX = int(mouseX / self.SQUARE_SIDE_SIZE)
@@ -310,18 +289,18 @@ class Graphics:
 
         def newGame():
             self.board.setToRandomPreGeneratedBoard()
-            self.evenHandler()
+            self.eventHandler()
 
         def resumeGame():
             self.board.loadBoard()
-            self.evenHandler()
+            self.eventHandler()
 
         # create menu
         surface = create_example_window('SuDoku - Hint: PRESS "S" TO SOLVE',
-                                        (self.BOARD_WIDTH, self.BOARD_HEIGHT))
+                                      (self.BOARD_WIDTH, self.BOARD_HEIGHT))
 
         self.menu = pygame_menu.Menu('SuDoku', self.BOARD_WIDTH, self.BOARD_HEIGHT,
-                                     theme=pygame_menu.themes.THEME_DARK)
+                                   theme=pygame_menu.themes.THEME_DARK)
 
         self.menu.add.button('NEW GAME', newGame)
         if exists("savedBoard.csv"):
