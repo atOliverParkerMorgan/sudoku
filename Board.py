@@ -12,6 +12,10 @@ class Board:
 
         # 2d board with all sudoku Nodes
         self.board: List[List[Node]] = []
+        self.row_possible_values = [i for i in range(1, 10)]
+        self.col_possible_values = [i for i in range(1, 10)]
+        self.square_possible_values = [i for i in range(1, 10)]
+
 
     def saveBoard(self):
         open('savedBoard.csv', 'w').close()
@@ -100,22 +104,22 @@ class Board:
 
 
     def isNodeValid(self, node_x, node_y, value, check_only_if_is_valid=False):
-        blocking_nodes = []
+        output = []
 
         # check horizontally for the same value
         for x in range(self.width):
-            if self.getBoardNode(x, node_y).value == value:
+            if str(self.getBoardNode(x, node_y).value) == str(value):
                 if check_only_if_is_valid:
                     return False
-                blocking_nodes.append((x, node_y))
+                output.append((x, node_y))
 
         # check vertically for the same value
         for y in range(self.height):
-            if self.getBoardNode(node_x, y).value == value:
-                if (node_x, y) not in blocking_nodes:
+            if str(self.getBoardNode(node_x, y).value) == str(value):
+                if (node_x, y) not in output:
                     if check_only_if_is_valid:
                         return False
-                    blocking_nodes.append((node_x, y))
+                    output.append((node_x, y))
 
         # check squares
         # base square index => startRow, startCol
@@ -124,20 +128,17 @@ class Board:
 
         for x in range(3):
             for y in range(3):
-                if self.getBoardNode(x + startRow, y + startCol).value == value:
-                    if (x + startRow, y + startCol) not in blocking_nodes:
+                if str(self.getBoardNode(x + startRow, y + startCol).value) == str(value):
+                    if (x + startRow, y + startCol) not in output:
+                        output.append((x + startRow, y + startCol))
                         if check_only_if_is_valid:
                             return False
-                        blocking_nodes.append((x + startRow, y + startCol))
 
         if check_only_if_is_valid:
             return True
-    
-        return blocking_nodes
+        return output
 
-    def tryToSetValueOfNode(self, x, y, value):
-        if len(self.isNodeValid(self.getBoardNode(x, y), 1)) == 0:
-            self.setValue(x, y, value)
+
 
     def printBoard(self):
 
@@ -152,6 +153,7 @@ class Board:
         return self.board[y][x]
 
     def setValue(self, x, y, value):
+        self
         self.getBoardNode(x, y).value = value
 
     def randomSolution(self, index):
@@ -259,8 +261,10 @@ class Board:
         with open('preGeneratedSudokuBoards.csv', 'rt') as f:
             reader = list(csv.reader(f, delimiter=','))
             self.setBoardWithDefaultValues(reader[random.randint(0, sum(1 for _ in reader) - 1)])
+        pass
 
     def setToPreGeneratedBoard(self, index):
         with open('preGeneratedSudokuBoards.csv', 'rt') as f:
             reader = list(csv.reader(f, delimiter=','))
             self.setBoardWithDefaultValues(reader[index])
+            

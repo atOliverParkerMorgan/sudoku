@@ -79,6 +79,9 @@ class Graphics:
             if y % 3 == 0:
                 n = self.BOLD_LINE
             pygame.draw.line(self.SCREEN, BLACK, (0, y), (self.BOARD_WIDTH, y), n)
+    
+
+    
 
     def showNumbersOnBoard(self):
         # draw symbols on board
@@ -109,9 +112,12 @@ class Graphics:
                         color = BLACK
 
                     if self.invalidNodes is not None:
+                        print("invalidNodes", self.invalidNodes)
                         for node in self.invalidNodes:
-                            if x == node[0] and y == node[1]:
+                            if node[0] == x and node[1] == y:
                                 color = RED
+                                break
+                    
 
                     text = FONT.render(symbol, False, color)
                     self.SCREEN.blit(text, (graphicsX, graphicsY))
@@ -157,7 +163,7 @@ class Graphics:
                     self.numberOfSolutions
                 )
                 
-                if self.currentIndex == -1:
+                if solutionsFound == 1:
                     # Solution found or no more solutions possible
                     self.isSolving = False
 
@@ -198,8 +204,33 @@ class Graphics:
                 if event.type == pygame.KEYDOWN:
                     validInput = "123456789"
 
-                    if event.key == pygame.K_BACKSPACE and not self.board.getBoardNode(self.selectedX,
-                                                                                      self.selectedY).user_cannot_change:
+                    # Handle keyboard navigation
+                    if event.key == pygame.K_RIGHT:
+                        if self.selectedX is None or self.selectedY is None:
+                            self.selectedX, self.selectedY = 0, 0
+                        else:
+                            self.selectedX = (self.selectedX + 1) % 9
+                    
+                    elif event.key == pygame.K_LEFT:
+                        if self.selectedX is None or self.selectedY is None:
+                            self.selectedX, self.selectedY = 8, 0
+                        else:
+                            self.selectedX = (self.selectedX - 1) % 9
+                    
+                    elif event.key == pygame.K_DOWN:
+                        if self.selectedX is None or self.selectedY is None:
+                            self.selectedX, self.selectedY = 0, 0
+                        else:
+                            self.selectedY = (self.selectedY + 1) % 9
+                    
+                    elif event.key == pygame.K_UP:
+                        if self.selectedX is None or self.selectedY is None:
+                            self.selectedX, self.selectedY = 0, 8
+                        else:
+                            self.selectedY = (self.selectedY - 1) % 9
+
+                    elif isSelected and event.key == pygame.K_BACKSPACE and not self.board.getBoardNode(self.selectedX,
+                                                                                    self.selectedY).user_cannot_change:
                         self.board.setValue(self.selectedX, self.selectedY, 0)
 
                     elif event.key == pygame.K_ESCAPE:
@@ -214,11 +245,11 @@ class Graphics:
                             inputValue = str(event.unicode)
 
                             if self.addingNotes:
-                                if inputValue in node.noteNums:
-                                    node.noteNums.remove(inputValue)
+                                if inputValue in node.note_nums:
+                                    node.note_nums.remove(inputValue)
                                 else:
-                                    node.noteNums.append(inputValue)
-                                    node.noteNums.sort()
+                                    node.note_nums.append(inputValue)
+                                    node.note_nums.sort()
 
                             elif not self.board.getBoardNode(self.selectedX, self.selectedY).user_cannot_change:
                                 if self.board.getBoardNode(self.selectedX, self.selectedY).value == int(event.unicode):
@@ -229,12 +260,25 @@ class Graphics:
                                         self.selectedX, self.selectedY,
                                         int(event.unicode))
 
-                                    # the input is valid
-                                    if len(self.invalidNodes) == 1:
-                                        self.invalidNodes = []
+
+                    elif event.key == pygame.K_DELETE:
+                        if isSelected and not self.board.getBoardNode(self.selectedX, self.selectedY).user_cannot_change:
+                            self.board.setValue(self.selectedX, self.selectedY, 0)
+                            self.board.getBoardNode(self.selectedX, self.selectedY).note_nums = []
+                            self.addingNotes = False
+                            self.selectedX, self.selectedY = None, None
+                            self.doubleClick = False
+                    
+                    elif event.key == pygame.K_SPACE:
+                        if self.isSolving:
+                            self.board.resetNodesOnBoardThatUserChanged()
+                            self.isSolving = False
+                        else:
+                            self.board.setToRandomPreGeneratedBoard()
+                            self.eventHandler()
 
                     elif event.key == pygame.K_s:
-                        self.solver = Solver(self.board, "backtracking", 1)
+                        self.solver = Solver(self.board, "backtracking")
 
                         if self.isSolving:
                             self.board.resetNodesOnBoardThatUserChanged()
@@ -244,6 +288,7 @@ class Graphics:
 
                             if len(self.emptyNodes) == 0:
                                 self.board.resetNodesOnBoard(self.emptyNodes)
+                                
                             else:
                                 self.board.resetNodesOnBoardThatUserChanged()
                                 self.emptyNodes = self.board.getNodesWithoutValue()
@@ -264,7 +309,6 @@ class Graphics:
                     indexY = int(mouseY / self.SQUARE_SIDE_SIZE)
 
                     self.selectedX, self.selectedY = indexX, indexY
-                    self.invalidNodes = []
 
                     if self.isDoubleClick() and self.doubleClick:
                         self.selectedX, self.selectedY = None, None

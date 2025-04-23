@@ -1,7 +1,7 @@
 class Solver:
-    def __init__(self, board, solver_type, number_of_solutions=0):
+    def __init__(self, board, solver_type):
         self.board = board
-        self.number_of_solutions = number_of_solutions
+        self.number_of_solutions = 0
         self.solver_type = solver_type
 
     def solve(self):
@@ -51,7 +51,7 @@ class Solver:
             return 1
         
         last_node_values = {}
-        target_solutions = self.number_of_solutions  
+        target_solutions = 1
         self.number_of_solutions = 0
 
         for node in empty_nodes:
@@ -64,3 +64,4 @@ class Solver:
             )
 
         return self.number_of_solutions
+
