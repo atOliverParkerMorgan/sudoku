@@ -4,6 +4,8 @@ import pygame
 import pygame_menu
 from pygame_menu.examples import create_example_window
 from Solver import Solver
+import random
+from Board import Board
 
 pygame.init()
 FONT = pygame.font.Font(None, 32)
@@ -34,10 +36,10 @@ class Graphics:
         # pixel width of line
         self.BOLD_LINE = 3
         self.SQUARE_SIDE_SIZE = 50
-        self.BOARD_HEIGHT = self.BOARD_WIDTH = self.SQUARE_SIDE_SIZE * 9 + self.BOLD_LINE - 1
+        self.BOARD_SIZE_PIXELS = self.SQUARE_SIDE_SIZE * board.size + self.BOLD_LINE - 1
 
         # pygame graphics tools
-        self.SCREEN = pygame.display.set_mode((self.BOARD_WIDTH, self.BOARD_HEIGHT))
+        self.SCREEN = pygame.display.set_mode((self.BOARD_SIZE_PIXELS, self.BOARD_SIZE_PIXELS))
         self.CLOCK = pygame.time.Clock()
         self.CLOCK.tick(20)
         self.SCREEN.fill(WHITE)
@@ -59,36 +61,39 @@ class Graphics:
 
         self.addingNotes = False
 
+        self.inputBuffer = ""
+        self.lastInputTime = 0
+
     def isDoubleClick(self):
         self.timer += self.ADD_TO_TIMER
         return self.timer < 3
 
     def showBoard(self):
-        fullScreen = pygame.Rect(0, 0, self.BOARD_WIDTH, self.BOARD_HEIGHT)
+        fullScreen = pygame.Rect(0, 0, self.BOARD_SIZE_PIXELS, self.BOARD_SIZE_PIXELS)
         self.SCREEN.fill(WHITE, fullScreen)
 
+        # Calculate the box size (e.g., 3 for 9x9 grid)
+        box_size = int(self.board.size ** 0.5)
+
         # show lines around on board
-        for x in range(0, self.BOARD_WIDTH, self.SQUARE_SIDE_SIZE):
+        for x in range(0, self.BOARD_SIZE_PIXELS + 1, self.SQUARE_SIDE_SIZE):
             n = 1
-            if x % 3 == 0:
+            if x % (self.SQUARE_SIDE_SIZE * box_size) == 0:
                 n = self.BOLD_LINE
-            pygame.draw.line(self.SCREEN, BLACK, (x, 0), (x, self.BOARD_HEIGHT), n)
+            pygame.draw.line(self.SCREEN, BLACK, (x, 0), (x, self.BOARD_SIZE_PIXELS), n)
 
-        for y in range(0, self.BOARD_HEIGHT, self.SQUARE_SIDE_SIZE):
+        for y in range(0, self.BOARD_SIZE_PIXELS + 1, self.SQUARE_SIDE_SIZE):
             n = 1
-            if y % 3 == 0:
+            if y % (self.SQUARE_SIDE_SIZE * box_size) == 0:
                 n = self.BOLD_LINE
-            pygame.draw.line(self.SCREEN, BLACK, (0, y), (self.BOARD_WIDTH, y), n)
-    
-
-    
+            pygame.draw.line(self.SCREEN, BLACK, (0, y), (self.BOARD_SIZE_PIXELS, y), n)
 
     def showNumbersOnBoard(self):
         # draw symbols on board
-        for x, graphicsX in zip(range(self.board.width),
-                               range(int(self.SQUARE_SIDE_SIZE / 2) - 5, self.BOARD_WIDTH, self.SQUARE_SIDE_SIZE)):
-            for y, graphicsY in zip(range(self.board.height),
-                                   range(int(self.SQUARE_SIDE_SIZE / 2) - 8, self.BOARD_HEIGHT,
+        for x, graphicsX in zip(range(self.board.size),
+                               range(int(self.SQUARE_SIDE_SIZE / 2) - 5, self.BOARD_SIZE_PIXELS, self.SQUARE_SIDE_SIZE)):
+            for y, graphicsY in zip(range(self.board.size),
+                                   range(int(self.SQUARE_SIDE_SIZE / 2) - 8, self.BOARD_SIZE_PIXELS,
                                          self.SQUARE_SIDE_SIZE)):
 
                 symbol = str(self.board.board[y][x].value)
@@ -108,37 +113,40 @@ class Graphics:
                 else:
                     color = BLUE
 
-                    if self.board.board[y][x].user_cannot_change or len(self.board.getNodesWithoutValue()) == 0:
+                    if self.board.board[y][x].user_cannot_change:
                         color = BLACK
+                    
+                    if len(self.board.getNodesWithoutValue()) == 0:
+                        color = GREEN
 
-                    if self.invalidNodes is not None:
-                        print("invalidNodes", self.invalidNodes)
+                    if self.invalidNodes:
                         for node in self.invalidNodes:
                             if node[0] == x and node[1] == y:
                                 color = RED
                                 break
-                    
 
                     text = FONT.render(symbol, False, color)
                     self.SCREEN.blit(text, (graphicsX, graphicsY))
 
     def showSelected(self, x, y, color):
+        # Calculate box size (e.g., 3 for 9x9 grid)
+        box_size = int(self.board.size ** 0.5)
+        
         # show selected
-
         # account for lines that separate nodes
         boarderFrontX, boarderFrontY, boarderBackX, boarderBackY = 1, 1, 1, 1
-        if x % 3 == 0:
+        if x % box_size == 0:
             boarderFrontX = 2
             boarderBackX = 2
 
-        if y % 3 == 0:
+        if y % box_size == 0:
             boarderFrontY = 2
             boarderBackY = 2
 
-        if (x + 1) % 3 == 0:
+        if (x + 1) % box_size == 0:
             boarderBackX = 2
 
-        if (y + 1) % 3 == 0:
+        if (y + 1) % box_size == 0:
             boarderBackY = 2
 
         # create the square using rect
@@ -170,19 +178,26 @@ class Graphics:
             isSelected = self.selectedX is not None and self.selectedY is not None
 
             if isSelected:
-                for x in range(self.board.width):
+                # Highlight row
+                for x in range(self.board.size):
                     self.showSelected(x, self.selectedY, GREY)
 
-                for y in range(self.board.width):
+                # Highlight column
+                for y in range(self.board.size):
                     self.showSelected(self.selectedX, y, GREY)
 
-                startRow = self.selectedX - self.selectedX % 3
-                startCol = self.selectedY - self.selectedY % 3
+                # Calculate box size
+                box_size = int(self.board.size ** 0.5)
+                
+                # Highlight the box containing the selected cell
+                startRow = self.selectedX - self.selectedX % box_size
+                startCol = self.selectedY - self.selectedY % box_size
 
-                for x in range(3):
-                    for y in range(3):
+                for x in range(box_size):
+                    for y in range(box_size):
                         self.showSelected(startRow + x, startCol + y, GREY)
 
+                # Highlight the selected cell with appropriate color
                 if self.addingNotes:
                     self.showSelected(self.selectedX, self.selectedY, DARK_GREEN)
                 elif not self.board.board[self.selectedY][self.selectedX].user_cannot_change:
@@ -202,32 +217,31 @@ class Graphics:
                     sys.exit()
 
                 if event.type == pygame.KEYDOWN:
-                    validInput = "123456789"
 
                     # Handle keyboard navigation
                     if event.key == pygame.K_RIGHT:
                         if self.selectedX is None or self.selectedY is None:
                             self.selectedX, self.selectedY = 0, 0
                         else:
-                            self.selectedX = (self.selectedX + 1) % 9
+                            self.selectedX = (self.selectedX + 1) % self.board.size
                     
                     elif event.key == pygame.K_LEFT:
                         if self.selectedX is None or self.selectedY is None:
-                            self.selectedX, self.selectedY = 8, 0
+                            self.selectedX, self.selectedY = self.board.size-1, 0
                         else:
-                            self.selectedX = (self.selectedX - 1) % 9
+                            self.selectedX = (self.selectedX - 1) % self.board.size
                     
                     elif event.key == pygame.K_DOWN:
                         if self.selectedX is None or self.selectedY is None:
                             self.selectedX, self.selectedY = 0, 0
                         else:
-                            self.selectedY = (self.selectedY + 1) % 9
+                            self.selectedY = (self.selectedY + 1) % self.board.size
                     
                     elif event.key == pygame.K_UP:
                         if self.selectedX is None or self.selectedY is None:
-                            self.selectedX, self.selectedY = 0, 8
+                            self.selectedX, self.selectedY = 0, self.board.size-1
                         else:
-                            self.selectedY = (self.selectedY - 1) % 9
+                            self.selectedY = (self.selectedY - 1) % self.board.size
 
                     elif isSelected and event.key == pygame.K_BACKSPACE and not self.board.getBoardNode(self.selectedX,
                                                                                     self.selectedY).user_cannot_change:
@@ -239,26 +253,43 @@ class Graphics:
                         pygame.quit()
                         break
 
-                    elif event.unicode in validInput and isSelected and not self.isSolving:
-                        if not event.unicode == '':
-                            node = self.board.getBoardNode(self.selectedX, self.selectedY)
-                            inputValue = str(event.unicode)
+                    elif event.unicode.isdigit() and isSelected and not self.isSolving:
+                        now = pygame.time.get_ticks()
 
-                            if self.addingNotes:
-                                if inputValue in node.note_nums:
-                                    node.note_nums.remove(inputValue)
-                                else:
-                                    node.note_nums.append(inputValue)
-                                    node.note_nums.sort()
+                        # Reset buffer if more than 1 second passed
+                        if now - self.lastInputTime > 500:
+                            self.inputBuffer = ""
+                        
+                        self.inputBuffer += event.unicode
 
-                            elif not self.board.getBoardNode(self.selectedX, self.selectedY).user_cannot_change:
-                                if self.board.getBoardNode(self.selectedX, self.selectedY).value == int(event.unicode):
-                                    self.board.setValue(self.selectedX, self.selectedY, 0)
-                                else:
-                                    self.board.setValue(self.selectedX, self.selectedY, int(event.unicode))
-                                    self.invalidNodes = self.board.isNodeValid(
-                                        self.selectedX, self.selectedY,
-                                        int(event.unicode))
+                        self.lastInputTime = now
+
+                        try:
+                            inputValue = int(self.inputBuffer)
+                            if 1 <= inputValue <= self.board.size:
+                                node = self.board.getBoardNode(self.selectedX, self.selectedY)
+
+                                if self.addingNotes:
+                                    if inputValue in node.note_nums:
+                                        node.note_nums.remove(inputValue)
+                                    else:
+                                        node.note_nums.append(inputValue)
+                                        node.note_nums.sort()
+                                elif not node.user_cannot_change:
+                                    if node.value == inputValue:
+                                        self.board.setValue(self.selectedX, self.selectedY, 0)
+                                    else:
+                                        if self.board.isNodeValid(self.selectedX, self.selectedY, inputValue, True):
+                                            self.board.setValue(self.selectedX, self.selectedY, inputValue)
+                                        self.invalidNodes = self.board.isNodeValid(self.selectedX, self.selectedY, inputValue)
+
+                                # Clear buffer after valid input
+                                
+                            elif inputValue > self.board.size:
+                                # Clear buffer if input exceeds board max value
+                                self.inputBuffer = ""
+                        except ValueError:
+                            self.inputBuffer = ""
 
 
                     elif event.key == pygame.K_DELETE:
@@ -308,15 +339,17 @@ class Graphics:
                     indexX = int(mouseX / self.SQUARE_SIDE_SIZE)
                     indexY = int(mouseY / self.SQUARE_SIDE_SIZE)
 
-                    self.selectedX, self.selectedY = indexX, indexY
+                    # Make sure we don't select outside the board
+                    if 0 <= indexX < self.board.size and 0 <= indexY < self.board.size:
+                        self.selectedX, self.selectedY = indexX, indexY
 
-                    if self.isDoubleClick() and self.doubleClick:
-                        self.selectedX, self.selectedY = None, None
-                        self.doubleClick = False
-                        self.addingNotes = False
-                    else:
-                        self.timer = 0
-                        self.doubleClick = True
+                        if self.isDoubleClick() and self.doubleClick:
+                            self.selectedX, self.selectedY = None, None
+                            self.doubleClick = False
+                            self.addingNotes = False
+                        else:
+                            self.timer = 0
+                            self.doubleClick = True
 
             if self.doubleClick:
                 self.isDoubleClick()
@@ -324,27 +357,38 @@ class Graphics:
             pygame.display.update()
 
     def loading(self):
-        rect = pygame.Rect(10, self.BOARD_WIDTH - 100, self.BOARD_WIDTH - 100, self.SQUARE_SIDE_SIZE)
+        rect = pygame.Rect(10, self.BOARD_SIZE_PIXELS - 100, self.BOARD_SIZE_PIXELS - 100, self.SQUARE_SIDE_SIZE)
         self.SCREEN.fill(GREEN, rect)
         pygame.display.update()
 
     def createMenu(self):
         self.isSolving = False
+        board_size = [16]  # default value as a list to allow inner modification
+
+        def set_board_size(selected, value):
+            board_size[0] = value
 
         def newGame():
-            self.board.setToRandomPreGeneratedBoard()
+            self.board = Board(board_size[0])
+            self.__init__(self.board)  # reinitialize everything with new board
+            self.board.loadBoard(f'puzzles_{self.board.size}x{self.board.size}', random.randint(0, 64))
             self.eventHandler()
 
         def resumeGame():
-            self.board.loadBoard()
+            self.board = Board(board_size[0])
+            self.__init__(self.board)
+            self.board.loadBoard('saved_{self.board.size}x{self.board.size}', 0)
             self.eventHandler()
 
-        # create menu
         surface = create_example_window('SuDoku - Hint: PRESS "S" TO SOLVE',
-                                      (self.BOARD_WIDTH, self.BOARD_HEIGHT))
+                                        (self.BOARD_SIZE_PIXELS, self.BOARD_SIZE_PIXELS))
 
-        self.menu = pygame_menu.Menu('SuDoku', self.BOARD_WIDTH, self.BOARD_HEIGHT,
-                                   theme=pygame_menu.themes.THEME_DARK)
+        self.menu = pygame_menu.Menu('SuDoku', self.BOARD_SIZE_PIXELS, self.BOARD_SIZE_PIXELS,
+                                    theme=pygame_menu.themes.THEME_DARK)
+
+        self.menu.add.selector('Board Size ',
+                            [ ('16x16', 16), ('9x9', 9),('4x4', 4)],
+                            onchange=set_board_size)
 
         self.menu.add.button('NEW GAME', newGame)
         if exists("savedBoard.csv"):
@@ -352,7 +396,6 @@ class Graphics:
 
         self.menu.add.button('QUIT', pygame_menu.events.EXIT)
         self.menu.add.label('')
-
         self.menu.add.label("Oliver Morgan")
 
         self.menu.mainloop(surface)

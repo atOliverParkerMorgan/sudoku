@@ -28,7 +28,7 @@ class Solver:
 
         found = False   
         # Try values from current_value to 9         
-        for value in range(current_value, 10):
+        for value in range(current_value, self.board.size + 1):
             # Here we check the constraints of the Sudoku board
             if self.board.isNodeValid(x, y, value, check_only_if_is_valid=True):
                 # If the value is valid, set it on the board
@@ -45,23 +45,26 @@ class Solver:
                 return -1, self.number_of_solutions
             return current_index, self.number_of_solutions
 
-    def backtracking_solver(self):
+    def backtracking_solver(self, target_solutions=1, maxSearchDepth=-1):
         empty_nodes = self.board.getNodesWithoutValue()
         if not empty_nodes:
             return 1
         
         last_node_values = {}
-        target_solutions = 1
         self.number_of_solutions = 0
 
         for node in empty_nodes:
             last_node_values[node] = 1
 
         current_index = 0
+        searchNum = 0
         while current_index >= 0 and current_index < len(empty_nodes):
             current_index, _ = self.backtracking_solver_tick(
                 last_node_values, current_index, empty_nodes, target_solutions
             )
-
+            searchNum += 1
+            # print(f"Search number: {searchNum}, Solutions found: {self.number_of_solutions}")
+            if maxSearchDepth <= searchNum and not maxSearchDepth == -1:
+                break
+            
         return self.number_of_solutions
-

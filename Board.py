@@ -2,33 +2,44 @@ import csv
 import random
 from typing import List
 from Node import Node
-
+import math
+from Solver import Solver
 
 class Board:
-    def __init__(self):
-        # sudoku 9x9
-        self.width = 9
-        self.height = 9
+    def __init__(self, size=9):
+        # sudoku with size x size dimensions (default 9x9)
+        if math.isqrt(size) ** 2 != size:
+            raise ValueError("Size must be a perfect square (e.g., 4, 9, 16, etc.)")
+        self.size = size
 
         # 2d board with all sudoku Nodes
         self.board: List[List[Node]] = []
-        self.row_possible_values = [i for i in range(1, 10)]
-        self.col_possible_values = [i for i in range(1, 10)]
-        self.square_possible_values = [i for i in range(1, 10)]
+        
+        # Initialize empty board
+        self.fillBoard()
 
 
-    def saveBoard(self):
-        open('savedBoard.csv', 'w').close()
-        with open('savedBoard.csv', 'a', newline='', encoding='utf-8') as f:
+    def saveBoard(self, filename='saved'):
+        with open(f'{filename}_{self.size}x{self.size}.csv', 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(self.getValuesDefault())
             writer.writerow(self.getValuesUser())
 
-    def loadBoard(self):
-        with open('savedBoard.csv', 'rt') as f:
-            reader = list(csv.reader(f, delimiter=','))
-            self.setBoardWithDefaultValues(reader[0])
-            self.setBoardWithUserValues(reader[1])
+
+    def loadBoard(self, filename='saved', index=0):
+        with open(f'{filename}.csv', 'rt', encoding='utf-8') as f:
+            reader = list(csv.reader(f))
+
+            # Each puzzle uses 2 rows (default and user values)
+            start = index * 2
+            end = start + 2
+
+            if end > len(reader):
+                raise IndexError("Puzzle index out of range.")
+
+            self.setBoardWithDefaultValues(reader[start])
+            self.setBoardWithUserValues(reader[start + 1])
+
 
     def getValuesDefault(self):
         output = []
@@ -55,14 +66,13 @@ class Board:
         for line in self.board:
             for node in line:
                 output.append(node.value)
-
         return output
 
     def setBoardWithDefaultValues(self, values):
         # set all node value to a newly chosen value
         index = 0
-        for y in range(self.height):
-            for x in range(self.width):
+        for y in range(self.size):
+            for x in range(self.size):
                 self.setValue(x, y, values[index])
                 self.getBoardNode(x, y).user_cannot_change = str(values[index]) != "0"
                 index += 1
@@ -70,11 +80,10 @@ class Board:
     def setBoardWithUserValues(self, values):
         # set all node value to a newly chosen value
         index = 0
-        for y in range(self.height):
-            for x in range(self.width):
+        for y in range(self.size):
+            for x in range(self.size):
                 if not self.getBoardNode(x, y).user_cannot_change:
                     self.setValue(x, y, values[index])
-
                 index += 1
 
     def fillBoard(self):
@@ -82,9 +91,9 @@ class Board:
         self.board: List[List[Node]] = []
 
         # create new board with nodes that have value zero
-        for y in range(self.height):
+        for y in range(self.size):
             helperList = []
-            for x in range(self.width):
+            for x in range(self.size):
                 helperList.append(Node(x, y, 0))
             self.board.append(helperList)
 
@@ -92,43 +101,45 @@ class Board:
         # reset all node value to zero
         for node in nodes:
             self.setValue(node.x, node.y, 0)
-            self.getBoardNode(node.x, node.y).userCannotChange = False
+            self.getBoardNode(node.x, node.y).user_cannot_change = False
 
     def resetNodesOnBoardThatUserChanged(self):
         # reset all node value to zero that user changed
-        for x in range(self.width):
-            for y in range(self.height):
+        for x in range(self.size):
+            for y in range(self.size):
                 node = self.getBoardNode(x, y)
                 if not node.user_cannot_change:
                     self.setValue(node.x, node.y, 0)
-
 
     def isNodeValid(self, node_x, node_y, value, check_only_if_is_valid=False):
         output = []
 
         # check horizontally for the same value
-        for x in range(self.width):
-            if str(self.getBoardNode(x, node_y).value) == str(value):
+        for x in range(self.size):
+            if str(self.getBoardNode(x, node_y).value) == str(value) and x != node_x:
                 if check_only_if_is_valid:
                     return False
                 output.append((x, node_y))
 
         # check vertically for the same value
-        for y in range(self.height):
-            if str(self.getBoardNode(node_x, y).value) == str(value):
+        for y in range(self.size):
+            if str(self.getBoardNode(node_x, y).value) == str(value) and y != node_y:
                 if (node_x, y) not in output:
                     if check_only_if_is_valid:
                         return False
                     output.append((node_x, y))
 
         # check squares
+        # Calculate square size (e.g., for 9x9 board, box_size = 3)
+        box_size = int(self.size ** 0.5)
+        
         # base square index => startRow, startCol
-        startRow = node_x - node_x % 3
-        startCol = node_y - node_y % 3
+        startRow = node_x - node_x % box_size
+        startCol = node_y - node_y % box_size
 
-        for x in range(3):
-            for y in range(3):
-                if str(self.getBoardNode(x + startRow, y + startCol).value) == str(value):
+        for x in range(box_size):
+            for y in range(box_size):
+                if str(self.getBoardNode(x + startRow, y + startCol).value) == str(value) and (x + startRow, y + startCol) != (node_x, node_y):
                     if (x + startRow, y + startCol) not in output:
                         output.append((x + startRow, y + startCol))
                         if check_only_if_is_valid:
@@ -138,133 +149,58 @@ class Board:
             return True
         return output
 
-
-
     def printBoard(self):
-
         for row in self.board:
             line = ""
             for node in row:
                 line += str(node)
-
             print(line)
 
     def getBoardNode(self, x, y):
         return self.board[y][x]
 
     def setValue(self, x, y, value):
-        self
         self.getBoardNode(x, y).value = value
-
-    def randomSolution(self, index):
-        pass
 
     def getNodesWithoutValue(self):
         # get all nodes that have value zero
-
         nodesWithoutValue = []
-        for y in range(self.height):
-            for x in range(self.width):
+        for y in range(self.size):
+            for x in range(self.size):
                 if str(self.getBoardNode(x, y).value) == "0":
                     nodesWithoutValue.append(self.getBoardNode(x, y))
-
         return nodesWithoutValue
 
 
+    def generatePuzzle(self, target_solutions=1, maxSearchDepth=10_000):
 
-    def generatePuzzle(self, maxSearchDepth=100_000):
         nodes = self.getNodesWithoutValue()
-        lastP = 0
+        solver = Solver(self, "backtracking")
 
         while nodes:
+            node = random.choice(nodes)
+            x, y = node.x, node.y
 
-            # get random node
-            randomIndex = random.randint(0, len(nodes) - 1)
-            x, y = nodes[randomIndex].x, nodes[randomIndex].y
+            valid_numbers = [num for num in range(1, self.size + 1)
+                            if self.isNodeValid(x, y, num, check_only_if_is_valid=True)]
 
-            # get all valid values for this node
-            validNumList = [num for num in range(1, 10) if len(self.isNodeValid(nodes[randomIndex], num)) == 0]
+            if not valid_numbers:
+                nodes.remove(node)
+                continue
 
-            # set the node to a random value for all valid values
-            self.setValue(x, y, validNumList[random.randint(0, len(validNumList) - 1)])
+            self.setValue(x, y, random.choice(valid_numbers))
 
-            # if the board doesn't have a solution, because of the new value => reset
-            # numberOfSolutions = self.backTrackingWithoutRecursion(1, False, maxSearchDepth)
-            numberOfSolutions = self.backTrackingWithoutRecursion(1, True, maxSearchDepth)
-
-            # returns -1 if the algorithm searches through 10 000 000 loops without result
-            # this puzzle is too costly to generate
-            if numberOfSolutions == -1:
-                print("\n\n\n ATTENTION: Search has been restarted, current search is too costly \n\n\n")
-                return False
-
-            # return 0 if the puzzle has no solution
-            if numberOfSolutions == 0:
-                self.setValue(x, y, 0)
-
+            if solver.backtracking_solver(target_solutions, maxSearchDepth) == 0:
+                self.setValue(x, y, 0)  # Undo placement if it leads to no solution
             else:
-                # the node has been successfully generated
-                nodes.pop(randomIndex)
+                nodes.remove(node)  # Keep the value and move on
 
-            # console
-            p = len(nodes)
-
-            p = int(50 - 50 * p / 81)
-            if p != lastP:
-                print(f"Loading: {p} %")
-                lastP = p
-
-        # a valid random board has been generated
-
-        # add all nodes cords to a list
-        allNodesList = []
-        for x in range(self.width):
-            for y in range(self.height):
-                allNodesList.append((x, y))
-
-        # shuffle allNodesList randomly
-        randomNodeList = []
-        while allNodesList:
-            randomNodeList.append(allNodesList.pop(random.randint(0, len(allNodesList) - 1)))
-
-        # try to remove as many nodes as possible while maintaining the puzzle uniqueness
-        # (the puzzle has to have only one solution)
-        while randomNodeList:
-            x, y = randomNodeList.pop(0)
-
-            # save node value in case the uniqueness of the puzzle breaks down once this node is removed
-            value = self.getBoardNode(x, y).value
-
-            # remove node value
-            self.setValue(x, y, 0)
-
-            # console output
-            p = len(randomNodeList)
-            if p == 0:
-                p = 1
-
-            p = int(50 + 50 / p)
-            if p != lastP:
-                print(f"Loading: {p} %")
-                lastP = p
-
-            # if the puzzle has two solution => set the node to its original value
-            if self.backTrackingWithoutRecursion(2, False, maxSearchDepth) == 2:
-                self.setValue(x, y, value)
-
-                # user cannot change this node its apart of the puzzle
-                self.getBoardNode(x, y).userCannotChange = True
+        for y in range(self.size):
+            for x in range(self.size):
+                node = self.getBoardNode(x, y)
+                if random.random() <= 0.85:
+                    self.setValue(x, y, 0)
+                else:
+                    node.user_cannot_change = True
 
         return True
-
-    def setToRandomPreGeneratedBoard(self):
-        with open('preGeneratedSudokuBoards.csv', 'rt') as f:
-            reader = list(csv.reader(f, delimiter=','))
-            self.setBoardWithDefaultValues(reader[random.randint(0, sum(1 for _ in reader) - 1)])
-        pass
-
-    def setToPreGeneratedBoard(self, index):
-        with open('preGeneratedSudokuBoards.csv', 'rt') as f:
-            reader = list(csv.reader(f, delimiter=','))
-            self.setBoardWithDefaultValues(reader[index])
-            
