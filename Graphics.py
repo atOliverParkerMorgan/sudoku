@@ -27,11 +27,12 @@ class Graphics:
         # following variables are used to showing how puzzle is being solved
         self.isSolving = False
         self.numberOfSolutions = 0
-        self.emptyNodes = None
+        self.emptyNodes = []  # Initialize as empty list instead of None
         self.savedSolution = None
         self.currentIndex = 0
-        self.lastNodeValues = None
+        self.lastNodeValues = {}  # Initialize as empty dict instead of None
         self.invalidNodes = []
+        self.foundSolution = False
 
         # pixel width of line
         self.BOLD_LINE = 3
@@ -158,22 +159,60 @@ class Graphics:
         # change color depending if current user input is valid or not
         self.SCREEN.fill(color, selectedSquare)
 
+    def initializeSolving(self):
+        """Initialize variables for the solving process"""
+        self.emptyNodes = self.board.getNodesWithoutValue()
+        
+        # Handle case where there are no empty nodes
+        if not self.emptyNodes:
+            return False
+        
+        # Reset solver state
+        if self.solver:
+            self.solver.number_of_solutions = 0
+            self.solver.backtracking_nodes = []
+            
+            # Apply forward checking to prepare the board
+            self.solver.apply_forward_checking()
+        
+        self.currentIndex = 0
+        self.numberOfSolutions = 0
+        self.lastNodeValues = {}
+        
+        # Initialize lastNodeValues for each empty node
+        for node in self.emptyNodes:
+            self.lastNodeValues[node] = 0
+            
+        return True
+
     def eventHandler(self):
         # handle events
         while True:
             self.showBoard()
 
-            if self.isSolving:
-                self.currentIndex, solutionsFound = self.solver.backtracking_solver_tick(
-                    self.lastNodeValues, 
-                    self.currentIndex,
-                    self.emptyNodes, 
-                    self.numberOfSolutions
-                )
+            if self.isSolving and self.solver:
+            # Make sure we have valid empty nodes and initialization
+                if not self.emptyNodes:
+                    if not self.initializeSolving():
+                        self.isSolving = False
                 
-                if solutionsFound == 1:
-                    # Solution found or no more solutions possible
-                    self.isSolving = False
+                # Only proceed if we have valid setup
+                if self.isSolving and self.emptyNodes:
+                    try:
+                    # Get solving result
+                        result = self.solver.backtracking_solver_tick(1)  # Pass target_solutions=1
+                        
+                        # If solver returned True, we're done (either found solution or exhausted possibilities)
+                        if result:
+                            self.isSolving = False
+                            if len(self.board.getNodesWithoutValue()) == 0:
+                                print("Solution found!")
+                            else:
+                                print("No solution exists for this board")
+                                
+                    except Exception as e:
+                        print(f"Error during solving: {e}")
+                        self.isSolving = False
 
             isSelected = self.selectedX is not None and self.selectedY is not None
 
@@ -246,6 +285,7 @@ class Graphics:
                     elif isSelected and event.key == pygame.K_BACKSPACE and not self.board.getBoardNode(self.selectedX,
                                                                                     self.selectedY).user_cannot_change:
                         self.board.setValue(self.selectedX, self.selectedY, 0)
+                        self.invalidNodes = []
 
                     elif event.key == pygame.K_ESCAPE:
                         self.board.saveBoard()
@@ -276,14 +316,15 @@ class Graphics:
                                         node.note_nums.append(inputValue)
                                         node.note_nums.sort()
                                 elif not node.user_cannot_change:
+                                    self.invalidNodes = []  # Clear any previous invalid nodes
                                     if node.value == inputValue:
                                         self.board.setValue(self.selectedX, self.selectedY, 0)
                                     else:
-                                        if self.board.isNodeValid(self.selectedX, self.selectedY, inputValue, True):
-                                            self.board.setValue(self.selectedX, self.selectedY, inputValue)
-                                        self.invalidNodes = self.board.isNodeValid(self.selectedX, self.selectedY, inputValue)
+                                        if not self.board.setValue(self.selectedX, self.selectedY, inputValue):
+                                            self.invalidNodes = self.board.getInvalidityReasons(self.selectedX, self.selectedY, inputValue)
 
                                 # Clear buffer after valid input
+                                self.inputBuffer = ""
                                 
                             elif inputValue > self.board.size:
                                 # Clear buffer if input exceeds board max value
@@ -299,39 +340,25 @@ class Graphics:
                             self.addingNotes = False
                             self.selectedX, self.selectedY = None, None
                             self.doubleClick = False
+                            self.invalidNodes = []
                     
                     elif event.key == pygame.K_SPACE:
                         if self.isSolving:
                             self.board.resetNodesOnBoardThatUserChanged()
                             self.isSolving = False
+                            self.invalidNodes = []
                         else:
                             self.board.setToRandomPreGeneratedBoard()
                             self.eventHandler()
-
                     elif event.key == pygame.K_s:
-                        self.solver = Solver(self.board, "backtracking")
-
-                        if self.isSolving:
-                            self.board.resetNodesOnBoardThatUserChanged()
-                            self.isSolving = False
-                        else:
-                            self.emptyNodes = self.board.getNodesWithoutValue()
-
-                            if len(self.emptyNodes) == 0:
-                                self.board.resetNodesOnBoard(self.emptyNodes)
-                                
-                            else:
-                                self.board.resetNodesOnBoardThatUserChanged()
-                                self.emptyNodes = self.board.getNodesWithoutValue()
+                        # Start solving the current board
+                        if not self.isSolving:
+                            self.solver = Solver(self.board, "minimum-remaining-values")
+                            
+                            # Initialize properly before starting
+                            if self.initializeSolving():
                                 self.isSolving = True
 
-                                self.currentIndex = 0
-                                self.numberOfSolutions = 0
-                                self.lastNodeValues = {}
-                                
-                                # Initialize lastNodeValues for each empty node
-                                for node in self.emptyNodes:
-                                    self.lastNodeValues[node] = 1
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     self.addingNotes = event.button == 3
@@ -377,7 +404,31 @@ class Graphics:
         def resumeGame():
             self.board = Board(board_size[0])
             self.__init__(self.board)
-            self.board.loadBoard('saved_{self.board.size}x{self.board.size}', 0)
+            self.board.loadBoard(f'saved_{self.board.size}x{self.board.size}', 0)
+            self.eventHandler()
+
+        def minimum_remaining_values():
+            self.board = Board(board_size[0])
+            self.__init__(self.board)
+            self.board.loadBoard(f'puzzles_{self.board.size}x{self.board.size}', random.randint(0, 64))
+            self.solver = Solver(self.board, "minimum-remaining-values")
+            
+            # Initialize properly before starting
+            if self.initializeSolving():
+                self.isSolving = True
+            
+            self.eventHandler()
+
+        def least_constraining_values():
+            self.board = Board(board_size[0])
+            self.__init__(self.board)
+            self.board.loadBoard(f'puzzles_{self.board.size}x{self.board.size}', random.randint(0, 64))
+            self.solver = Solver(self.board, "least-constraining-values")
+            
+            # Initialize properly before starting
+            if self.initializeSolving():
+                self.isSolving = True
+                
             self.eventHandler()
 
         surface = create_example_window('SuDoku - Hint: PRESS "S" TO SOLVE',
@@ -394,8 +445,20 @@ class Graphics:
         if exists("savedBoard.csv"):
             self.menu.add.button('RESUME', resumeGame)
 
+        self.menu.add.button('Minimum Remaining Values', minimum_remaining_values)
+        self.menu.add.button('Least Constraining Values', least_constraining_values)
+
         self.menu.add.button('QUIT', pygame_menu.events.EXIT)
         self.menu.add.label('')
         self.menu.add.label("Oliver Morgan")
 
         self.menu.mainloop(surface)
+
+    def setToRandomPreGeneratedBoard(self):
+        if hasattr(self.board, 'setToRandomPreGeneratedBoard'):
+            self.board.setToRandomPreGeneratedBoard()
+        else:
+            try:
+                self.board.loadBoard(f'puzzles_{self.board.size}x{self.board.size}', random.randint(0, 64))
+            except Exception as e:
+                print(f"Error loading random board: {e}")

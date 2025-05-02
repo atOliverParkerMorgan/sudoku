@@ -94,7 +94,7 @@ class Board:
         for y in range(self.size):
             helperList = []
             for x in range(self.size):
-                helperList.append(Node(x, y, 0))
+                helperList.append(Node(x, y, 0, self.size))
             self.board.append(helperList)
 
     def resetNodesOnBoard(self, nodes):
@@ -111,42 +111,98 @@ class Board:
                 if not node.user_cannot_change:
                     self.setValue(node.x, node.y, 0)
 
-    def isNodeValid(self, node_x, node_y, value, check_only_if_is_valid=False):
-        output = []
-
-        # check horizontally for the same value
-        for x in range(self.size):
-            if str(self.getBoardNode(x, node_y).value) == str(value) and x != node_x:
-                if check_only_if_is_valid:
-                    return False
-                output.append((x, node_y))
-
-        # check vertically for the same value
-        for y in range(self.size):
-            if str(self.getBoardNode(node_x, y).value) == str(value) and y != node_y:
-                if (node_x, y) not in output:
-                    if check_only_if_is_valid:
-                        return False
-                    output.append((node_x, y))
-
-        # check squares
-        # Calculate square size (e.g., for 9x9 board, box_size = 3)
-        box_size = int(self.size ** 0.5)
+    def updateNodeValidValues(self, node_x, node_y):
+        # Get the node we're updating
+        node = self.getBoardNode(node_x, node_y)
         
-        # base square index => startRow, startCol
+        # Start with all values as valid, except the node's own value if it's set
+        node.valid_values = [i for i in range(1, self.size + 1)]
+        if node.value != 0:
+            if node.value in node.valid_values:
+                node.valid_values.remove(node.value)
+        
+        # Check row constraints
+        for x in range(self.size):
+            if x != node_x:  # Skip the current node
+                value = self.getBoardNode(x, node_y).value
+                if value != 0 and value in node.valid_values:
+                    node.valid_values.remove(value)
+        
+        # Check column constraints
+        for y in range(self.size):
+            if y != node_y:  # Skip the current node
+                value = self.getBoardNode(node_x, y).value
+                if value != 0 and value in node.valid_values:
+                    node.valid_values.remove(value)
+        
+        # Check box constraints
+        box_size = int(self.size ** 0.5)
+        startRow = node_x - node_x % box_size
+        startCol = node_y - node_y % box_size
+        
+        for x in range(box_size):
+            for y in range(box_size):
+                if (startRow + x, startCol + y) != (node_x, node_y):  # Skip the current node
+                    value = self.getBoardNode(startRow + x, startCol + y).value
+                    if value != 0 and value in node.valid_values:
+                        node.valid_values.remove(value)
+
+    def isValueValidForNode(self, node_x, node_y, value):
+        # Check if value is already present in this node
+        node = self.getBoardNode(node_x, node_y)
+        if str(node.value) != "0" and str(node.value) == str(value):
+            return True
+            
+        # Check if the value is allowed
+        if str(value) not in [str(i) for i in range(1, self.size + 1)]:
+            return False
+            
+        # Check for conflicts in row, column, and box
+        conflicts = self.getInvalidityReasons(node_x, node_y, value)
+        return len(conflicts) == 0
+
+    def getInvalidityReasons(self, node_x, node_y, value, check_only_if_is_valid=False):
+        """Returns a list of coordinates where the value conflicts with the given position"""
+        output = []
+        
+        # Skip checks if value is 0 (empty)
+        if str(value) == "0":
+            return output
+
+        # Check row conflicts
+        for x in range(self.size):
+            if x != node_x and str(self.getBoardNode(x, node_y).value) == str(value):
+                output.append((x, node_y))
+                if check_only_if_is_valid:
+                    return []  # Early exit if we only need to check validity
+
+        # Check column conflicts
+        for y in range(self.size):
+            if y != node_y and str(self.getBoardNode(node_x, y).value) == str(value):
+                if (node_x, y) not in output:  # Avoid duplicates
+                    output.append((node_x, y))
+                    if check_only_if_is_valid:
+                        return []
+
+        # Check box conflicts
+        box_size = int(self.size ** 0.5)
         startRow = node_x - node_x % box_size
         startCol = node_y - node_y % box_size
 
         for x in range(box_size):
             for y in range(box_size):
-                if str(self.getBoardNode(x + startRow, y + startCol).value) == str(value) and (x + startRow, y + startCol) != (node_x, node_y):
-                    if (x + startRow, y + startCol) not in output:
-                        output.append((x + startRow, y + startCol))
+                rx, ry = x + startRow, y + startCol
+                if (rx, ry) != (node_x, node_y) and str(self.getBoardNode(rx, ry).value) == str(value):
+                    if (rx, ry) not in output:  # Avoid duplicates
+                        output.append((rx, ry))
                         if check_only_if_is_valid:
-                            return False
+                            return []
 
+        # If check_only_if_is_valid is True, an empty list means it's invalid
+        # Otherwise, we return all conflicts
         if check_only_if_is_valid:
-            return True
+            return [True]  # No conflicts found, so it's valid
+            
         return output
 
     def printBoard(self):
@@ -160,40 +216,67 @@ class Board:
         return self.board[y][x]
 
     def setValue(self, x, y, value):
+        # Convert value to int if it's a string
+        if isinstance(value, str) and value.isdigit():
+            value = int(value)
+        elif isinstance(value, str) and value == '':
+            value = 0
+            
+        # If it's still not an int, make it 0
+        if not isinstance(value, int):
+            value = 0
+        
+        # Check if value is valid
+        if value != 0 and not self.isValueValidForNode(x, y, value):
+            self.getBoardNode(x, y).value = 0
+            return False
+
+        # Set the value
         self.getBoardNode(x, y).value = value
+        
+        # Update valid values for this node and affected nodes
+        self.updateValidValuesForAllAffectedNodes(x, y)
+        return True
+    
+    def updateValidValuesForAllAffectedNodes(self, x, y):
+        """Updates valid values for the node at (x,y) and all nodes in the same row, column, and box"""
+        # Update the node itself
+        self.updateNodeValidValues(x, y)
+        
+        # Update nodes in the same row
+        for i in range(self.size):
+            if i != x:
+                self.updateNodeValidValues(i, y)
+                
+        # Update nodes in the same column
+        for i in range(self.size):
+            if i != y:
+                self.updateNodeValidValues(x, i)
+                
+        # Update nodes in the same box
+        box_size = int(self.size ** 0.5)
+        startRow = x - x % box_size
+        startCol = y - y % box_size
+        
+        for i in range(box_size):
+            for j in range(box_size):
+                if (startRow + i, startCol + j) != (x, y):
+                    self.updateNodeValidValues(startRow + i, startCol + j)
 
     def getNodesWithoutValue(self):
         # get all nodes that have value zero
         nodesWithoutValue = []
         for y in range(self.size):
             for x in range(self.size):
-                if str(self.getBoardNode(x, y).value) == "0":
+                node = self.getBoardNode(x, y)
+                if str(node.value) == "0":
                     nodesWithoutValue.append(self.getBoardNode(x, y))
         return nodesWithoutValue
 
 
     def generatePuzzle(self, target_solutions=1, maxSearchDepth=10_000):
-
-        nodes = self.getNodesWithoutValue()
-        solver = Solver(self, "backtracking")
-
-        while nodes:
-            node = random.choice(nodes)
-            x, y = node.x, node.y
-
-            valid_numbers = [num for num in range(1, self.size + 1)
-                            if self.isNodeValid(x, y, num, check_only_if_is_valid=True)]
-
-            if not valid_numbers:
-                nodes.remove(node)
-                continue
-
-            self.setValue(x, y, random.choice(valid_numbers))
-
-            if solver.backtracking_solver(target_solutions, maxSearchDepth) == 0:
-                self.setValue(x, y, 0)  # Undo placement if it leads to no solution
-            else:
-                nodes.remove(node)  # Keep the value and move on
+        solver = Solver(self)
+        solver.backtracking_solver(target_solutions, maxSearchDepth)
 
         for y in range(self.size):
             for x in range(self.size):
