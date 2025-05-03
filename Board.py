@@ -13,10 +13,10 @@ class Board:
         self.box_size = int(math.sqrt(size))
         self.board: List[List[Node]] = []
         self.fillBoard()
-        self.getAffectedCells()
+        self.calculateRelatedNodes()
 
-    def getAffectedCells(self):
-        self.affected_cells_cache = {}
+    def calculateRelatedNodes(self):
+        self.related_node_cache = {}
         for x in range(self.size):
             for y in range(self.size):
                 affected = set()
@@ -35,7 +35,10 @@ class Board:
                         if (bx, by) != (x, y):
                             affected.add((bx, by))
 
-                self.affected_cells_cache[(x, y)] = list(affected)
+                self.related_node_cache[(x, y)] = list(affected)
+    
+    def getRelatedNodes(self, x, y):
+        return self.related_node_cache.get((x, y), [])
 
     def saveBoard(self, filename='savedBoard'):
         with open(f'{filename}.csv', 'w', newline='') as f:
@@ -100,7 +103,7 @@ class Board:
             return
 
         valid = set(range(1, self.size + 1))
-        for ax, ay in self.affected_cells_cache[(x, y)]:
+        for ax, ay in self.related_node_cache[(x, y)]:
             val = self.getBoardNode(ax, ay).value
             if val:
                 valid.discard(val)
@@ -121,12 +124,12 @@ class Board:
         current = self.getBoardNode(x, y).value
         if current == value:
             return True
-        return all(self.getBoardNode(ax, ay).value != value for ax, ay in self.affected_cells_cache[(x, y)])
+        return all(self.getBoardNode(ax, ay).value != value for ax, ay in self.related_node_cache[(x, y)])
 
     def getInvalidityReasons(self, x, y, value):
         if value == 0:
             return []
-        return [(ax, ay) for ax, ay in self.affected_cells_cache[(x, y)] if self.getBoardNode(ax, ay).value == value]
+        return [(ax, ay) for ax, ay in self.related_node_cache[(x, y)] if self.getBoardNode(ax, ay).value == value]
 
     def getBoardNode(self, x, y):
         return self.board[y][x]
@@ -141,14 +144,13 @@ class Board:
             return False
 
         node = self.getBoardNode(x, y)
-        old_value = node.value
         node.value = value
-        self._update_affected_domains(x, y, old_value, value)
+        self.updateAffectedNodes(x, y)
         return True
 
-    def _update_affected_domains(self, x, y, old_value, new_value):
+    def updateAffectedNodes(self, x, y):
         self.updateNodeValidValues(x, y)
-        for ax, ay in self.affected_cells_cache[(x, y)]:
+        for ax, ay in self.related_node_cache[(x, y)]:
             if self.getBoardNode(ax, ay).value == 0:
                 self.updateNodeValidValues(ax, ay)
 
@@ -158,15 +160,14 @@ class Board:
                 for x in range(self.size)
                 if self.getBoardNode(x, y).value == 0]
 
-    def generatePuzzle(self, difficulty=0.9):
+    def generatePuzzle(self, difficulty):
         from Solver import Solver
 
         self.fillBoard()
-        solver = Solver(self, "minimum-remaining-values")
+        solver = Solver(self, random.choice(["minimum-remaining-values", "least-constraining-values"]))
         if not solver.solve():
             return False
 
-        solution = [[self.getBoardNode(x, y).value for x in range(self.size)] for y in range(self.size)]
         positions = [(x, y) for y in range(self.size) for x in range(self.size)]
         random.shuffle(positions)
         cells_to_remove = int(self.size * self.size * difficulty)
@@ -183,12 +184,6 @@ class Board:
 
         return True
 
-    def setToRandomPreGeneratedBoard(self):
-        try:
-            self.generatePuzzle(difficulty=0.5)
-        except Exception as e:
-            print(f"Error generating random board: {e}")
-            try:
-                self.loadBoard(f'puzzles_{self.size}x{self.size}', random.randint(0, 64))
-            except Exception:
-                self.generatePuzzle(difficulty=0.3)
+    def setToRandomPreGeneratedBoard(self, difficulty=0.5):
+        self.generatePuzzle(difficulty)
+

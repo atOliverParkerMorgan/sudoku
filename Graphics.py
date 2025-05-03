@@ -12,21 +12,23 @@ pygame.init()
 # Fonts and colors
 FONT = pygame.font.Font(None, 32)
 NOTE_FONT = pygame.font.Font(None, 25)
-BLACK, WHITE, GREEN, GREY, RED, BLUE, BROWN, DARK_GREEN = (
+BLACK, WHITE, GREEN, GREY, RED, BLUE, BROWN, YELLOW = (
     (0, 0, 0), (255, 255, 255), (34, 139, 34), (128, 128, 128),
-    (255, 69, 0), (0, 0, 255), (255, 153, 51), (51, 102, 0)
+    (255, 69, 0), (0, 0, 255), (255, 153, 51), (255, 215, 0)
 )
 
 
+
 class Graphics:
-    def __init__(self, board):
+    def __init__(self, board, difficulty=0.5):
         self.board = board
         self.isSolving = False
         self.solver = None
         self.emptyNodes, self.invalidNodes = [], []
 
         self.SQUARE_SIDE_SIZE = 50
-        self.BOLD_LINE = 3
+        self.BOLD_LINE = 5
+        self.LINE = 2
         self.BOARD_SIZE_PIXELS = self.SQUARE_SIDE_SIZE * board.size + self.BOLD_LINE - 1
         self.SCREEN = pygame.display.set_mode((self.BOARD_SIZE_PIXELS,) * 2)
         self.CLOCK = pygame.time.Clock()
@@ -40,6 +42,8 @@ class Graphics:
         self.doubleClick = False
         self.timer = 0
         self.ADD_TO_TIMER = self.CLOCK.tick(30) / 1000
+        self.board_size = self.board.size
+        self.difficulty = difficulty
 
     def isDoubleClick(self):
         self.timer += self.ADD_TO_TIMER
@@ -50,7 +54,7 @@ class Graphics:
         box_size = int(self.board.size ** 0.5)
 
         for i in range(0, self.BOARD_SIZE_PIXELS + 1, self.SQUARE_SIDE_SIZE):
-            lw = self.BOLD_LINE if i % (self.SQUARE_SIDE_SIZE * box_size) == 0 else 1
+            lw = self.BOLD_LINE if i % (self.SQUARE_SIDE_SIZE * box_size) == 0 else self.LINE
             pygame.draw.line(self.SCREEN, BLACK, (i, 0), (i, self.BOARD_SIZE_PIXELS), lw)
             pygame.draw.line(self.SCREEN, BLACK, (0, i), (self.BOARD_SIZE_PIXELS, i), lw)
 
@@ -71,22 +75,18 @@ class Graphics:
                 else:
                     color = (
                         RED if (x, y) in self.invalidNodes else
-                        GREEN if not node.user_cannot_change and not self.board.getNodesWithoutValue()
+                        YELLOW if not node.user_cannot_change and not self.board.getNodesWithoutValue()
                         else BLACK if node.user_cannot_change else BLUE
                     )
                     self.SCREEN.blit(FONT.render(str(node.value), False, color), (graphicsX, graphicsY))
 
     def showSelected(self, x, y, color):
-        box_size = int(self.board.size ** 0.5)
-        frontX = 2 if x % box_size == 0 else 1
-        frontY = 2 if y % box_size == 0 else 1
-        backX = 2 if (x + 1) % box_size == 0 else 1
-        backY = 2 if (y + 1) % box_size == 0 else 1
 
-        rect = pygame.Rect(x * self.SQUARE_SIDE_SIZE + frontX,
-                           y * self.SQUARE_SIDE_SIZE + frontY,
-                           self.SQUARE_SIDE_SIZE - backX,
-                           self.SQUARE_SIDE_SIZE - backY)
+
+        rect = pygame.Rect(x * self.SQUARE_SIDE_SIZE + 1,
+                           y * self.SQUARE_SIDE_SIZE + 1,
+                           self.SQUARE_SIDE_SIZE - 1,
+                           self.SQUARE_SIDE_SIZE - 1)
         self.SCREEN.fill(color, rect)
 
     def initializeSolving(self):
@@ -102,10 +102,10 @@ class Graphics:
                 try:
                     if self.solver.solver_tick():
                         self.isSolving = False
-                        if not self.board.getNodesWithoutValue():
-                            print("Solution found!")
-                        else:
-                            print("No solution exists.")
+                        # if not self.board.getNodesWithoutValue():
+                        #     print("Solution found!")
+                        # else:
+                        #     print("No solution exists.")
                 except Exception as e:
                     print(f"Solver error: {e}")
                     self.isSolving = False
@@ -122,7 +122,7 @@ class Graphics:
 
                 cell = self.board.board[self.selectedY][self.selectedX]
                 if self.addingNotes:
-                    self.showSelected(self.selectedX, self.selectedY, DARK_GREEN)
+                    self.showSelected(self.selectedX, self.selectedY, YELLOW)
                 elif not cell.user_cannot_change:
                     self.showSelected(self.selectedX, self.selectedY, GREEN)
                 else:
@@ -162,7 +162,7 @@ class Graphics:
                             self.board.resetNodesOnBoardThatUserChanged()
                             self.isSolving = False
                         else:
-                            self.board.setToRandomPreGeneratedBoard()
+                            self.board.setToRandomPreGeneratedBoard(self.difficulty)
                             return self.eventHandler()
 
                     elif event.key == pygame.K_s and not self.isSolving:
@@ -206,36 +206,35 @@ class Graphics:
 
             if self.doubleClick:
                 self.isDoubleClick()
-
+            
             pygame.display.update()
 
     def createMenu(self):
         self.isSolving = False
-        board_size = [16]
-        difficulty = 0.5
 
-        def set_board_size(_, val): board_size[0] = val
+        def set_board_size(_, val): self.board_size = val
 
-        def set_difficulty(_, val): difficulty = val
+        def set_difficulty(_, val): self.difficulty = val
 
         def start_game(solver_type=None):
-            self.__init__(Board(board_size[0]))
+            self.__init__(Board(self.board_size), self.difficulty)
+            self.board.generatePuzzle(self.difficulty)
+
             if solver_type:
-                self.board.generatePuzzle(difficulty)
                 self.solver = Solver(self.board, solver_type)
                 self.isSolving = self.initializeSolving()
             self.eventHandler()
 
         def resume_game():
-            self.__init__(Board(board_size[0]))
+            self.__init__(Board(self.board_size), self.difficulty)
             self.board.loadBoard(f'saved_{self.board.size}x{self.board.size}', 0)
             self.eventHandler()
 
         surface = create_example_window('SuDoku - Hint: PRESS "S" TO SOLVE', (self.BOARD_SIZE_PIXELS,) * 2)
         self.menu = pygame_menu.Menu('SuDoku', self.BOARD_SIZE_PIXELS, self.BOARD_SIZE_PIXELS,
                                      theme=pygame_menu.themes.THEME_DARK)
-        self.menu.add.selector('Board Size ', [('16x16', 16), ('9x9', 9), ('4x4', 4)], onchange=set_board_size)
-        self.menu.add.selector('Difficutly ', [ ('Medium', 0.5), ('Easy', 0.25), ('Hard', 0.75), ('Impossible', 0.95)], onchange=set_board_size)
+        self.menu.add.selector('Board Size ', [('16x16', 16), ('9x9', 9), ('4x4', 4), ('25x25', 25)], onchange=set_board_size)
+        self.menu.add.selector('Difficutly ', [ ('Medium', 0.5), ('Easy', 0.25), ('Hard', 0.75), ('Impossible', 0.95)], onchange=set_difficulty)
 
         self.menu.add.button('NEW GAME', lambda: start_game())
 
