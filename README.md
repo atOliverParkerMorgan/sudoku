@@ -11,6 +11,18 @@ The codebase is organized around a clear separation of concerns:
 - `Graphics` handles rendering, menu flow, and user input.
 - `Solver` handles solving logic (currently backtracking-based in the UI flow).
 
+## Screenshots
+
+Place the two screenshots in `assets/screenshots/` with the names below:
+
+- `gameplay-full-board.png`
+- `gameplay-hint-highlight.png`
+
+Then they will render here:
+
+![Gameplay - Full Board](assets/screenshots/gameplay-full-board.png)
+![Gameplay - Hint Highlight](assets/screenshots/gameplay-hint-highlight.png)
+
 ## Features
 
 - Interactive Sudoku board UI using `pygame`
