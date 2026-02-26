@@ -112,7 +112,6 @@ class Graphics:
                         color = BLACK
 
                     if self.invalidNodes is not None:
-                        print("invalidNodes", self.invalidNodes)
                         for node in self.invalidNodes:
                             if node[0] == x and node[1] == y:
                                 color = RED
